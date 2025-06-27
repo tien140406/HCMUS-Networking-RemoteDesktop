@@ -7,11 +7,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Paths for curl
 # Find the MSYS2 installed curl
-set(CURL_INCLUDE_DIR "C:/curl/include")           # Edit if needed
-set(CURL_LIBRARY "C:/curl/lib/libcurl.dll.a")       # Edit if needed
+set(CURL_ROOT "C:/curl")
+set(CURL_INCLUDE_DIR "${CURL_ROOT}/include")
+set(CURL_LIBRARY "${CURL_ROOT}/lib/libcurl.dll.a")
 
 include_directories(${CURL_INCLUDE_DIR})
-link_libraries(${CURL_LIBRARY})
+link_directories("${CURL_ROOT}/lib")
 
 # Targets
 add_executable(Client Client/client.cpp)

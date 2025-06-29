@@ -19,9 +19,10 @@ const string gmail_username = "serverbottestmmt@gmail.com";
 const string ca_bundle_path = "C:/curl/cacert.pem";
 
 // Callback function for writing received data
-size_t WriteCallback(void* contents, size_t size, size_t nmemb, string* output) {
+size_t WriteCallback(char* ptr, size_t size, size_t nmemb, void* userdata) {
     size_t totalSize = size * nmemb;
-    output->append(static_cast<char*>(contents), totalSize);
+    string* buffer = static_cast<string*>(userdata);
+    buffer->append(ptr, totalSize);
     return totalSize;
 }
 
@@ -140,12 +141,35 @@ void send_to_server(const string& cmd) {
     WSACleanup();
 }
 
+string extract_plain_text_from_email(const string& rawEmail) {
+    smatch match;
+
+    // Step 1: Extract text/plain section
+    regex plainTextRe(R"(Content-Type:\s*text/plain.*?\r\n\r\n([\s\S]*?)\r\n--)", regex::icase);
+    if (regex_search(rawEmail, match, plainTextRe)) {
+        string body = match[1].str();
+
+        // Trim leading/trailing whitespace
+        body.erase(0, body.find_first_not_of(" \r\n"));
+        body.erase(body.find_last_not_of(" \r\n") + 1);
+
+        return body;
+    }
+
+    // Fallback: if no plain text, attempt whole email body
+    return rawEmail;
+}
+
+
 void check_email_commands() {
     CURL* curl = curl_easy_init();
     if (!curl) {
         cerr << "Failed to initialize curl" << endl;
         return;
     }
+
+    // Add this to enable verbose IMAP logging
+    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 
     // Set common curl options
     curl_easy_setopt(curl, CURLOPT_USERNAME, gmail_username.c_str());
@@ -156,7 +180,9 @@ void check_email_commands() {
 
     // Search for unseen emails
     string readBuffer;
-    curl_easy_setopt(curl, CURLOPT_URL, "imaps://imap.gmail.com/INBOX?SEARCH=UNSEEN");
+    //curl_easy_setopt(curl, CURLOPT_URL, "imaps://imap.gmail.com/INBOX?SEARCH=UNSEEN");
+    curl_easy_setopt(curl, CURLOPT_URL, "imaps://imap.gmail.com/INBOX");
+    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "UID SEARCH UNSEEN");
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
 
     CURLcode res = curl_easy_perform(curl);
@@ -185,50 +211,36 @@ void check_email_commands() {
     // Process each email
     for (const string& id : ids) {
         readBuffer.clear();
+
         string fetchUrl = "imaps://imap.gmail.com/INBOX/;UID=" + id;
         curl_easy_setopt(curl, CURLOPT_URL, fetchUrl.c_str());
+        curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, nullptr);  // clear previous custom command
+
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
 
         res = curl_easy_perform(curl);
+
+        
         if (res != CURLE_OK) {
             cerr << "Failed to fetch email UID " << id << ": " << curl_easy_strerror(res) << endl;
             continue;
         }
-
-        // Extract and decode content
-        string decoded;
-        regex base64Re(R"(Content-Transfer-Encoding:\s*base64\s*([\s\S]+?)\r\n\r\n)");
-        regex plainTextRe(R"(\r\n\r\n([\s\S]+))");
-        smatch match;
-
-        if (regex_search(readBuffer, match, base64Re)) {
-            decoded = base64_decode(match[1].str());
-        }
-        else if (regex_search(readBuffer, match, plainTextRe)) {
-            decoded = match[1].str();
-        }
-        else {
-            decoded = readBuffer;
-        }
-
-        // Decode UTF-8 base64 subjects
-        regex utf8b64Re(R"(=\?utf-8\?B\?(.*?)\?=)", regex::icase);
-        sregex_iterator subj_it(readBuffer.begin(), readBuffer.end(), utf8b64Re);
-        sregex_iterator subj_end;
-
-        for (; subj_it != subj_end; ++subj_it) {
-            string decodedSubject = base64_decode((*subj_it)[1].str());
-            cout << "Decoded subject: " << decodedSubject << endl;
-        }
+        
+        cout << "=== FETCHED RAW EMAIL ===\n" << readBuffer << "\n=========================\n";
+        string decoded = extract_plain_text_from_email(readBuffer);
+        cerr << "=== DECODED ===\n" << decoded << "\n=================\n";
 
         // Process commands
         istringstream iss(decoded);
         string line;
         while (getline(iss, line)) {
+            cout << line << '\n'; 
             if (line.find("start_program") != string::npos ||
                 line.find("shutdown") != string::npos ||
                 line.find("COMMAND") != string::npos) {
-                send_to_server(line);            }
+                execute_command(line);           
+            }
         }
     }
 
@@ -240,9 +252,11 @@ int main() {
     curl_global_init(CURL_GLOBAL_DEFAULT);
     
     check_email_commands();
-    test_command_execution();
+    //test_command_execution();
 
     // Cleanup curl
     curl_global_cleanup();
+
+    system("pause"); 
     return 0;
 }

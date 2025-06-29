@@ -1,10 +1,6 @@
 @echo off
 setlocal enabledelayedexpansion
 
-echo ==================================================
-echo [BUILD SCRIPT] Simple, Reliable Build
-echo ==================================================
-
 REM Delete any previous build directory
 if exist build (
     echo [INFO] Removing old 'build' directory...

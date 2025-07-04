@@ -5,16 +5,23 @@ project(NetworkingApp LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Paths for curl
-# Find the MSYS2 installed curl
-set(CURL_ROOT "C:/curl")
-set(CURL_INCLUDE_DIR "${CURL_ROOT}/include")
-set(CURL_LIBRARY "${CURL_ROOT}/lib/libcurl.dll.a")
+# ----------------------------
+# Find OpenCV (MSYS2 installed)
+# ----------------------------
+find_package(OpenCV REQUIRED)
+
+# ----------------------------
+# Manually specify curl (MSYS2 installed)
+# ----------------------------
+set(CURL_INCLUDE_DIR "C:/msys64/mingw64/include")
+set(CURL_LIBRARY "C:/msys64/mingw64/lib/libcurl.dll.a")
 
 include_directories(${CURL_INCLUDE_DIR})
-link_directories("${CURL_ROOT}/lib")
+link_directories("C:/msys64/mingw64/lib")
 
-# Targets
+# ----------------------------
+# Executables
+# ----------------------------
 add_executable(Client Client/client.cpp)
 target_link_libraries(Client ws2_32)
 
@@ -22,4 +29,9 @@ add_executable(Server Server/server.cpp)
 target_link_libraries(Server ws2_32)
 
 add_executable(ImapTest ImapTest/main.cpp)
-target_link_libraries(ImapTest ${CURL_LIBRARY} ws2_32 wldap32)
+target_link_libraries(ImapTest
+    ${CURL_LIBRARY}
+    ${OpenCV_LIBS}
+    ws2_32
+    wldap32
+)

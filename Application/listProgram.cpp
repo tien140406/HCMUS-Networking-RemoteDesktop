@@ -1,4 +1,5 @@
 #include "listProgram.h"
+#include <filesystem>
 
 void list_programs() {
   const string filename = "process_list.txt";
@@ -38,5 +39,11 @@ void list_programs() {
   outFile << "==========================" << endl;
   outFile.close();
 
-  cout << "Process list written to: " << filename << endl;
+  cout << "Process list written to: " << std::filesystem::absolute(filename) << endl;
+
+  if (std::filesystem::remove(filename)) {
+    cout << "File deleted after sending." << endl;
+  } else {
+    cerr << "Failed to delete the file." << endl;
+  }
 }

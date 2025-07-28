@@ -4,7 +4,7 @@ setlocal enabledelayedexpansion
 echo [INFO] Simple MSYS2 build script
 
 REM === Basic MSYS2 setup ===
-set "MSYS_ROOT=D:\msys64"
+set "MSYS_ROOT=C:\msys64"
 set "PATH=%MSYS_ROOT%\mingw64\bin;%MSYS_ROOT%\usr\bin;%PATH%"
 
 REM === Clean build ===
@@ -35,9 +35,9 @@ if errorlevel 1 (
     exit /b 1
 )
 
-@REM REM === Copy DLLs ===
-@REM echo [INFO] Copying DLLs...
-@REM copy "%MSYS_ROOT%\mingw64\bin\*.dll" . >nul 2>&1
+REM === Copy DLLs ===
+echo [INFO] Copying DLLs...
+copy "%MSYS_ROOT%\mingw64\bin\*.dll" . >nul 2>&1
 
 echo [INFO] Build complete!
 echo [INFO] To run: make sure %MSYS_ROOT%\mingw64\bin is in your Windows PATH

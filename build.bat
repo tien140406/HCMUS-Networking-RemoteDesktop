@@ -40,9 +40,9 @@ if errorlevel 1 (
     exit /b 1
 )
 
-@REM REM === Copy DLLs ===
-@REM echo [INFO] Copying DLLs...
-@REM copy "%MSYS_ROOT%\mingw64\bin\*.dll" . >nul 2>&1
+REM === Copy DLLs ===
+echo [INFO] Copying DLLs...
+copy "%MSYS_ROOT%\mingw64\bin\*.dll" . >nul 2>&1
 
 echo [INFO] Build complete!
 echo [INFO] To run: make sure %MSYS_ROOT%\mingw64\bin is in your Windows PATH

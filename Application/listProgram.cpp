@@ -53,9 +53,6 @@ void list_programs() {
       cerr << "Failed to create process list file" << endl;
     }
   
-  if (std::filesystem::remove(filename)) {
-    cout << "File deleted after sending." << endl;
-  } else {
-    cerr << "Failed to delete the file." << endl;
-  }
+  if (!std::filesystem::remove(filename)) 
+      cerr << "Failed to delete the file." << endl;
 }

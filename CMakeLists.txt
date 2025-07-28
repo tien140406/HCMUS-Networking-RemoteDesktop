@@ -182,11 +182,3 @@ target_link_libraries(IMAP
     ws2_32
     wldap32
 )
-
-# Final summary
-message(STATUS "=== Build Configuration Summary ===")
-message(STATUS "CURL Method: ${CURL_METHOD}")
-message(STATUS "CURL Include: ${CURL_INCLUDE_DIRS}")
-message(STATUS "CURL Libraries: ${CURL_LIBRARIES}")
-message(STATUS "OpenCV Version: ${OpenCV_VERSION}")
-message(STATUS "==================================")

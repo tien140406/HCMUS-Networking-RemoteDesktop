@@ -6,75 +6,72 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 message(STATUS "=== Portable CURL Detection ===")
 
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(CURL REQUIRED libcurl)
-
 # Method 1: Try pkg-config (most reliable for MSYS2)
-# find_package(PkgConfig )
-# if(PkgConfig_FOUND)
-#     message(STATUS "Trying pkg-config for libcurl...")
-#     pkg_check_modules(CURL QUIET libcurl)
-#     if(CURL_FOUND)
-#         message(STATUS "✓ Found libcurl via pkg-config")
-#         message(STATUS "  Version: ${CURL_VERSION}")
-#         message(STATUS "  Include dirs: ${CURL_INCLUDE_DIRS}")
-#         message(STATUS "  Libraries: ${CURL_LIBRARIES}")
-#         set(CURL_METHOD "pkg-config")
-#     else()
-#         message(STATUS "✗ pkg-config couldn't find libcurl")
-#     endif()
-# endif()
+find_package(PkgConfig )
+if(PkgConfig_FOUND)
+    message(STATUS "Trying pkg-config for libcurl...")
+    pkg_check_modules(CURL QUIET libcurl)
+    if(CURL_FOUND)
+        message(STATUS "✓ Found libcurl via pkg-config")
+        message(STATUS "  Version: ${CURL_VERSION}")
+        message(STATUS "  Include dirs: ${CURL_INCLUDE_DIRS}")
+        message(STATUS "  Libraries: ${CURL_LIBRARIES}")
+        set(CURL_METHOD "pkg-config")
+    else()
+        message(STATUS "✗ pkg-config couldn't find libcurl")
+    endif()
+endif()
 
 # Method 2: Manual search with portable paths
-# if(NOT CURL_FOUND)
-#     message(STATUS "Trying manual search...")
+if(NOT CURL_FOUND)
+    message(STATUS "Trying manual search...")
     
-#     # Common MSYS2/MinGW installation paths
-#     set(CURL_SEARCH_PATHS
-#         $ENV{MINGW_PREFIX}
-#         $ENV{MSYSTEM_PREFIX}
-#         /mingw64
-#         /mingw32
-#         /usr/local
-#         /usr
-#     )
+    # Common MSYS2/MinGW installation paths
+    set(CURL_SEARCH_PATHS
+        $ENV{MINGW_PREFIX}
+        $ENV{MSYSTEM_PREFIX}
+        /mingw64
+        /mingw32
+        /usr/local
+        /usr
+    )
     
-#     # Also check common Windows locations
-#     if(WIN32)
-#         list(APPEND CURL_SEARCH_PATHS
-#             C:/msys64/mingw64
-#             D:/msys64/mingw64
-#             C:/mingw64
-#             D:/mingw64
-#         )
-#     endif()
+    # Also check common Windows locations
+    if(WIN32)
+        list(APPEND CURL_SEARCH_PATHS
+            C:/msys64/mingw64
+            D:/msys64/mingw64
+            C:/mingw64
+            D:/mingw64
+        )
+    endif()
     
-#     find_path(CURL_INCLUDE_DIR
-#         NAMES curl/curl.h
-#         PATHS ${CURL_SEARCH_PATHS}
-#         PATH_SUFFIXES include
-#         DOC "CURL include directory"
-#     )
+    find_path(CURL_INCLUDE_DIR
+        NAMES curl/curl.h
+        PATHS ${CURL_SEARCH_PATHS}
+        PATH_SUFFIXES include
+        DOC "CURL include directory"
+    )
     
-#     find_library(CURL_LIBRARY
-#         NAMES curl libcurl
-#         PATHS ${CURL_SEARCH_PATHS}
-#         PATH_SUFFIXES lib lib64
-#         DOC "CURL library"
-#     )
+    find_library(CURL_LIBRARY
+        NAMES curl libcurl
+        PATHS ${CURL_SEARCH_PATHS}
+        PATH_SUFFIXES lib lib64
+        DOC "CURL library"
+    )
     
-#     if(CURL_INCLUDE_DIR AND CURL_LIBRARY)
-#         set(CURL_FOUND TRUE)
-#         set(CURL_INCLUDE_DIRS ${CURL_INCLUDE_DIR})
-#         set(CURL_LIBRARIES ${CURL_LIBRARY})
-#         set(CURL_METHOD "manual")
-#         message(STATUS "✓ Found libcurl manually")
-#         message(STATUS "  Include dir: ${CURL_INCLUDE_DIR}")
-#         message(STATUS "  Library: ${CURL_LIBRARY}")
-#     else()
-#         message(STATUS "✗ Manual search failed")
-#     endif()
-# endif()
+    if(CURL_INCLUDE_DIR AND CURL_LIBRARY)
+        set(CURL_FOUND TRUE)
+        set(CURL_INCLUDE_DIRS ${CURL_INCLUDE_DIR})
+        set(CURL_LIBRARIES ${CURL_LIBRARY})
+        set(CURL_METHOD "manual")
+        message(STATUS "✓ Found libcurl manually")
+        message(STATUS "  Include dir: ${CURL_INCLUDE_DIR}")
+        message(STATUS "  Library: ${CURL_LIBRARY}")
+    else()
+        message(STATUS "✗ Manual search failed")
+    endif()
+endif()
 
 # Final check
 if(NOT CURL_FOUND)
@@ -111,6 +108,7 @@ add_executable(IMAP
 
 # Set include directories
 target_include_directories(IMAP PRIVATE
+    ${SRC_DIR}
     ${CURL_INCLUDE_DIRS}
     ${OpenCV_INCLUDE_DIRS}
 )

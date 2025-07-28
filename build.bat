@@ -4,8 +4,13 @@ setlocal enabledelayedexpansion
 echo [INFO] Simple MSYS2 build script
 
 REM === Basic MSYS2 setup ===
-set "MSYS_ROOT=D:\msys64"
-set "PATH=%MSYS_ROOT%\mingw64\bin;%MSYS_ROOT%\usr\bin;%PATH%"
+if defined MSYS2_ROOT (
+    set "MSYS_ROOT=%MSYS2_ROOT%"
+) else (
+    REM Fall back to common locations
+    if exist "C:\msys64" set "MSYS_ROOT=C:\msys64"
+    if exist "D:\msys64" set "MSYS_ROOT=D:\msys64"
+)
 
 REM === Clean build ===
 if exist build (

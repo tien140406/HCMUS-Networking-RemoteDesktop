@@ -34,3 +34,25 @@ void send_picture() {
                              "Here is a photo taken from the webcam.",
                              image_path);
 }
+
+void take_picture(const std::string &outFile) {
+  cv::VideoCapture cap(0);
+  if (!cap.isOpened()) {
+    std::cerr << "[Server] Failed to open webcam!\n";
+    return;
+  }
+
+  cv::Mat frame;
+  cap >> frame;
+
+  if (frame.empty()) {
+    std::cerr << "[Server] Failed to capture image!\n";
+    return;
+  }
+
+  if (!cv::imwrite(outFile, frame)) {
+    std::cerr << "[Server] Failed to save picture to " << outFile << "\n";
+  } else {
+    std::cout << "[Server] Picture saved to " << outFile << "\n";
+  }
+}

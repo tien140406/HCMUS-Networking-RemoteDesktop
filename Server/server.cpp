@@ -1,10 +1,12 @@
-#include <iostream>
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#include <string>
-#pragma comment(lib, "ws2_32.lib")
+#include "../Application/lib.h"
+#include "../Application/executeCommand.h"
 
-using namespace std;
+static string trim(const string& s) {
+  size_t a = s.find_first_not_of(" \r\n\t");
+  if (a == string::npos) return "";
+  size_t b = s.find_last_not_of(" \r\n\t");
+  return s.substr(a, b - a + 1);
+}
 
 int main() {
   WSADATA wsa;
@@ -15,7 +17,7 @@ int main() {
 
   int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
   if (serverSocket == INVALID_SOCKET) {
-    cerr << "[Server] Can not create socket: " << WSAGetLastError() << endl;
+    cerr << "[Server] Cannot create socket: " << WSAGetLastError() << endl;
     WSACleanup();
     return 1;
   }
@@ -33,46 +35,65 @@ int main() {
     return 1;
   }
 
-  listen(serverSocket, 5);
-  cout << "[Server] Waiting for server connection at port 8888...\n";
-
-  sockaddr_in clientAddr{};
-  int clientSize = sizeof(clientAddr);
-  int clientSocket = accept(serverSocket, (sockaddr*)&clientAddr, &clientSize);
-  if (clientSocket == INVALID_SOCKET) {
-    cerr << "[Server] Accept error: " << WSAGetLastError() << endl;
+  if (listen(serverSocket, 5) == SOCKET_ERROR) {
+    cerr << "[Server] Listen error: " << WSAGetLastError() << endl;
     closesocket(serverSocket);
     WSACleanup();
     return 1;
   }
 
-  cout << "[Server] Connected to client.\n";
+  cout << "[Server] Listening on port 8888...\n";
 
   while (true) {
-    char buffer[1024] = {};
-    int bytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0);
-    if (bytesReceived <= 0) {
-      cout << "[Server] Client disconnected.\n";
-      break;
+    sockaddr_in clientAddr{};
+    int clientSize = sizeof(clientAddr);
+    int clientSocket =
+        accept(serverSocket, (sockaddr*)&clientAddr, &clientSize);
+    if (clientSocket == INVALID_SOCKET) {
+      cerr << "[Server] Accept error: " << WSAGetLastError() << endl;
+      continue;
     }
 
-    buffer[bytesReceived] = '\0';  
-    cout << "[Server] Receive Command: " << buffer << endl;
+    cout << "[Server] Client connected.\n";
 
-    if (strcmp(buffer, "shutdown") == 0) {
-      send(clientSocket, "shutdown command (virtual)", 25, 0);
-    } else if (strncmp(buffer, "start_program ", 14) == 0) {
-      string cmd = buffer + 14;
-      system(cmd.c_str());
-      send(clientSocket, "Finished", 27, 0);
-    } else {
-      send(clientSocket, "Undefined command", 21, 0);
+    char buffer[4096] = {};
+    int bytes = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
+    if (bytes <= 0) {
+      cerr << "[Server] Receive failed or connection closed.\n";
+      closesocket(clientSocket);
+      continue;
     }
+    buffer[bytes] = '\0';
+    string payload = buffer;
+
+    std::istringstream iss(payload);
+    string sender_email;
+    if (!std::getline(iss, sender_email)) {
+      cerr << "[Server] Malformed payload: missing sender\n";
+      string nack = "Malformed payload";
+      send(clientSocket, nack.c_str(), static_cast<int>(nack.size()), 0);
+      closesocket(clientSocket);
+      continue;
+    }
+    sender_email = trim(sender_email);
+    cout << "[Server] Sender: " << sender_email << endl;
+
+    string line;
+    while (std::getline(iss, line)) {
+      line = trim(line);
+      if (line.empty()) continue;
+      cout << "[Server] Executing command: " << line << " for " << sender_email
+           << endl;
+      execute_command_with_sender(sender_email, line);
+    }
+
+    string ack = "Commands processed";
+    send(clientSocket, ack.c_str(), static_cast<int>(ack.size()), 0);
+    closesocket(clientSocket);
+    cout << "[Server] Connection closed.\n";
   }
 
-  closesocket(clientSocket);
   closesocket(serverSocket);
   WSACleanup();
-
   return 0;
 }

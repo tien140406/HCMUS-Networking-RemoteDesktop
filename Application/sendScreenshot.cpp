@@ -20,7 +20,7 @@ void send_screenshot() {
     BITMAP bmp;
     GetObject(hBitmap, sizeof(BITMAP), &bmp);
 
-    cv::Mat screenshot(bmp.bmHeight, bmp.bmWidth, CV_8UC4); // Windows bitmaps are BGRA
+    cv::Mat screenshot(bmp.bmHeight, bmp.bmWidth, CV_8UC4); 
     GetBitmapBits(hBitmap, bmp.bmHeight * bmp.bmWidthBytes, screenshot.data);
 
     cv::Mat bgr_screenshot;

@@ -14,7 +14,7 @@ int main() {
 
   while (running.load()) {
     check_email_commands();
-    std::this_thread::sleep_for(std::chrono::seconds(15));
+    std::this_thread::sleep_for(std::chrono::seconds(5));
   }
 
   cout << "[Agent] Shutting down." << endl;

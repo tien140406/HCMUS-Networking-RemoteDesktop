@@ -22,6 +22,7 @@
 #include <csignal>
 #include <atomic>
 #include <thread>
+#include <mutex>
 #include <chrono>
 #pragma comment(lib, "ws2_32.lib")
 

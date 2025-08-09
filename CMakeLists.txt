@@ -175,6 +175,7 @@ target_include_directories(IMAP PRIVATE
     ${OpenCV_INCLUDE_DIRS}
 )
 
+<<<<<<< Updated upstream
 # Link libraries
 target_link_libraries(IMAP
     ${CURL_LIBRARIES}
@@ -182,3 +183,5 @@ target_link_libraries(IMAP
     ws2_32
     wldap32
 )
+=======
+>>>>>>> Stashed changes

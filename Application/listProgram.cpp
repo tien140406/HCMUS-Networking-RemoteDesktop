@@ -71,9 +71,6 @@ void list_programs() {
   } else {
     cerr << "Failed to create program list file" << endl;
   }
-
-  if (!std::filesystem::remove(filename))
-    cerr << "Failed to delete the file." << endl;
 }
 
 // Hàm để lấy danh sách các process đang chạy

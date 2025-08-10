@@ -9,8 +9,6 @@
 #include "keylogger.h"
 #include "recording.h"
 
-std::string trim_command(std::string command);
-
 void execute_command(const std::string& command);
 
 void handle_start_program(const std::string& command);

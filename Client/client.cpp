@@ -2,7 +2,7 @@
 #include "../Application/checkCommand.h"
 #include <filesystem>
 
-const string saveDir = "C:/Users/Tien/Documents/RecieveFromServer/";
+const string saveDir = "C:/MMT/";
 
 SOCKET connect_to_server(const std::string &host, int port) {
   WSADATA wsa;

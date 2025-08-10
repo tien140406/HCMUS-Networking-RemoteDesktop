@@ -24,9 +24,11 @@ void send_email_with_attachment(const std::string& toEmail,
   }
 
   struct curl_slist* recipients = nullptr;
+  struct curl_slist* headers = nullptr;
   curl_mime* mime = curl_mime_init(curl);
   curl_mimepart* part = nullptr;
 
+  // Set SMTP options
   curl_easy_setopt(curl, CURLOPT_USERNAME, gmail_username.c_str());
   curl_easy_setopt(curl, CURLOPT_PASSWORD, app_password.c_str());
   curl_easy_setopt(curl, CURLOPT_URL, "smtps://smtp.gmail.com:465");
@@ -34,39 +36,41 @@ void send_email_with_attachment(const std::string& toEmail,
   curl_easy_setopt(curl, CURLOPT_CAINFO, ca_bundle_path.c_str());
   curl_easy_setopt(curl, CURLOPT_MAIL_FROM, gmail_username.c_str());
 
+  // Set recipients
   recipients = curl_slist_append(recipients, toEmail.c_str());
   curl_easy_setopt(curl, CURLOPT_MAIL_RCPT, recipients);
 
-  // Create email headers part
-  part = curl_mime_addpart(mime);
-  std::string headers = "To: " + toEmail +
-                        "\r\n"
-                        "From: " +
-                        gmail_username +
-                        "\r\n"
-                        "Subject: " +
-                        subject +
-                        "\r\n"
-                        "MIME-Version: 1.0\r\n";
-  curl_mime_data(part, headers.c_str(), CURL_ZERO_TERMINATED);
-  curl_mime_type(part, "text/plain");
+  // Set email headers (this is the key fix)
+  std::string to_header = "To: " + toEmail;
+  std::string from_header = "From: " + gmail_username;
+  std::string subject_header = "Subject: " + subject;
+  
+  headers = curl_slist_append(headers, to_header.c_str());
+  headers = curl_slist_append(headers, from_header.c_str());
+  headers = curl_slist_append(headers, subject_header.c_str());
+  headers = curl_slist_append(headers, "MIME-Version: 1.0");
+  
+  curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
-  // Add body part
+  // Create multipart MIME structure
+  // Add text body part
   part = curl_mime_addpart(mime);
   curl_mime_data(part, body.c_str(), CURL_ZERO_TERMINATED);
-  curl_mime_type(part, "text/plain");
+  curl_mime_type(part, "text/plain; charset=utf-8");
 
-  std::filesystem::path filePathObj(filepath);
-  string filename = filePathObj.filename().string();
-  string extension = filePathObj.extension().string();
-  string mimeType = getMimeType(extension);
+  // Add attachment part (if file exists)
+  if (!filepath.empty() && std::filesystem::exists(filepath)) {
+    std::filesystem::path filePathObj(filepath);
+    string filename = filePathObj.filename().string();
+    string extension = filePathObj.extension().string();
+    string mimeType = getMimeType(extension);
 
-  // Add attachment part
-  part = curl_mime_addpart(mime);
-  curl_mime_filedata(part, filepath.c_str());
-  curl_mime_filename(part, filename.c_str());
-  curl_mime_type(part, mimeType.c_str());
-  curl_mime_encoder(part, "base64");
+    part = curl_mime_addpart(mime);
+    curl_mime_filedata(part, filepath.c_str());
+    curl_mime_filename(part, filename.c_str());
+    curl_mime_type(part, mimeType.c_str());
+    curl_mime_encoder(part, "base64");
+  }
 
   curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
   curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
@@ -79,7 +83,9 @@ void send_email_with_attachment(const std::string& toEmail,
     std::cout << "Email sent successfully!" << std::endl;
   }
 
+  // Cleanup
   curl_mime_free(mime);
   curl_slist_free_all(recipients);
+  curl_slist_free_all(headers);
   curl_easy_cleanup(curl);
 }

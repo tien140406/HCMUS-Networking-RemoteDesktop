@@ -1,6 +1,6 @@
 #include "sendScreenshot.h"
 
-void send_screenshot() { cout << "zz"; }
+void send_screenshot() {}
 
 struct MonitorInfo {
   RECT rect;

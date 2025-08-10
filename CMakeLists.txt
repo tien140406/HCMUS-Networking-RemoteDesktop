@@ -7,10 +7,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
-set(CURL_INCLUDE_DIR "C:/msys64/mingw64/include")
-set(CURL_LIBRARY "C:/msys64/mingw64/lib/libcurl.dll.a")
+set(CURL_INCLUDE_DIR "D:/msys64/mingw64/include")
+set(CURL_LIBRARY "D:/msys64/mingw64/lib/libcurl.dll.a")
 include_directories(${CURL_INCLUDE_DIR})
-link_directories("C:/msys64/mingw64/lib")
+link_directories("D:/msys64/mingw64/lib")
 
 file(GLOB APP_SOURCES application/*.cpp)
 
@@ -26,15 +26,6 @@ target_link_libraries(Client
 # Server
 add_executable(Server Server/server.cpp ${APP_SOURCES})
 target_link_libraries(Server
-    ${CURL_LIBRARY}
-    ${OpenCV_LIBS}
-    ws2_32
-    wldap32
-)
-
-# ImapTest
-add_executable(ImapTest imap/main.cpp ${APP_SOURCES})
-target_link_libraries(ImapTest
     ${CURL_LIBRARY}
     ${OpenCV_LIBS}
     ws2_32

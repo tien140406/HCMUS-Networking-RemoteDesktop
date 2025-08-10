@@ -54,6 +54,8 @@ void recording_loop() {
 
         lastFrameTime = currentTime;
     }
+    
+    std::cout << "[Server] Recording loop ended." << std::endl;
 }
 
 void start_recording(const std::string& outFilePath) {
@@ -73,6 +75,7 @@ void start_recording(const std::string& outFilePath) {
         return;
     }
 
+    // Set camera properties
     cap.set(cv::CAP_PROP_FRAME_WIDTH, frameWidth);
     cap.set(cv::CAP_PROP_FRAME_HEIGHT, frameHeight);
     cap.set(cv::CAP_PROP_FPS, fps);
@@ -101,6 +104,7 @@ void stop_recording() {
         return;
     }
 
+    std::cout << "[Server] Stopping recording..." << std::endl;
     recording.store(false);
 
     if (recordingThread.joinable()) {
@@ -116,4 +120,11 @@ void stop_recording() {
     if (cap.isOpened()) {
         cap.release();
     }
+    
+    std::string savedPath;
+    {
+        std::lock_guard<std::mutex> lock(videoPathMutex);
+        savedPath = video_path;
+    }
+    std::cout << "[Server] Recording stopped and video saved: " << savedPath << std::endl;
 }

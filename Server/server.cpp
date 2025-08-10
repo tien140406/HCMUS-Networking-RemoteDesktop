@@ -17,7 +17,7 @@ std::map<std::string, std::string> fileCommands = {
 
 // Các command không cần tạo file nhưng cần confirmation
 std::set<std::string> simpleCommands = {"shutdown", "restart",
-                                        "cancel_shutdown", "stop_recording"};
+                                        "cancel_shutdown", "stop_recording", "start_recording"};
 
 bool is_start_program_command(const std::string& command) {
   return command.find("start_program") == 0;
@@ -132,12 +132,27 @@ void handle_client(SOCKET clientSocket) {
              is_start_program_command(command)) {
       execute_command(command);
 
-      // Gửi confirmation message
-      std::string confirmMsg = "Command executed: " + command;
-      size_t msgSize = confirmMsg.length();
-      send(clientSocket, reinterpret_cast<const char*>(&msgSize),
-           sizeof(msgSize), 0);
-      send(clientSocket, confirmMsg.c_str(), static_cast<int>(msgSize), 0);
+      if (command == "stop_recording") {
+        // After stopping recording, send the recorded .avi file
+        std::string videoFile = saveDir + "recording.avi"; // path to recording.avi
+        std::this_thread::sleep_for(std::chrono::seconds(3));
+        if (std::filesystem::exists(videoFile)) {
+          std::cout << "[Server] Sending recorded video file after stop: " << videoFile << std::endl;
+          send_file_over_socket(clientSocket, videoFile);
+          std::this_thread::sleep_for(std::chrono::seconds(10));
+        } else {
+          std::cout << "[Error] Recorded video file not found after stop." << std::endl;
+          size_t fileSize = 0;
+          send(clientSocket, reinterpret_cast<const char*>(&fileSize), sizeof(fileSize), 0);
+        }
+      }
+      else {
+        std::string confirmMsg = "Command executed: " + command;
+        size_t msgSize = confirmMsg.length();
+        send(clientSocket, reinterpret_cast<const char*>(&msgSize),
+            sizeof(msgSize), 0);
+        send(clientSocket, confirmMsg.c_str(), static_cast<int>(msgSize), 0);
+      }
     } else {
       // Unknown command
       std::string errorMsg = "Unknown command: " + command;

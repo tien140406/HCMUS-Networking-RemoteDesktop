@@ -3,43 +3,31 @@ setlocal enabledelayedexpansion
 
 echo [INFO] Simple MSYS2 build script
 
-REM === MSYS2 location ===
+REM === Basic MSYS2 setup ===
 if defined MSYS2_ROOT (
     set "MSYS_ROOT=%MSYS2_ROOT%"
 ) else (
+    REM Fall back to common locations
     if exist "C:\msys64" set "MSYS_ROOT=C:\msys64"
     if exist "D:\msys64" set "MSYS_ROOT=D:\msys64"
 )
 
-REM === Use MinGW64 GCC/G++ ===
+REM === Force using MSYS2 MinGW64 GCC/G++ ===
 set "PATH=%MSYS_ROOT%\mingw64\bin;%MSYS_ROOT%\usr\bin;%PATH%"
 set "CC=%MSYS_ROOT%\mingw64\bin\gcc.exe"
 set "CXX=%MSYS_ROOT%\mingw64\bin\g++.exe"
 
-REM === Go to project root ===
-cd /d %~dp0
-
-REM === Remove old CMake cache from project root ===
-if exist CMakeCache.txt (
-    echo [INFO] Removing old CMakeCache.txt...
-    del /f /q CMakeCache.txt
-)
-if exist CMakeFiles (
-    echo [INFO] Removing old CMakeFiles directory...
-    rmdir /s /q CMakeFiles
-)
-
-REM === Clean build folder ===
+REM === Clean build ===
 if exist build (
-    echo [INFO] Removing old build directory...
+    echo [INFO] Removing old build...
     rmdir /s /q build
 )
 mkdir build
 cd build
 
-REM === Run CMake ===
+REM === Simple CMake call ===
 echo [INFO] Running CMake...
-cmake .. -G "MinGW Makefiles" ^
+cmake .. -G "Ninja" ^
     -DOpenCV_DIR="%MSYS_ROOT%/mingw64/lib/cmake/opencv4"
 
 if errorlevel 1 (
@@ -50,7 +38,7 @@ if errorlevel 1 (
 
 REM === Build ===
 echo [INFO] Building...
-cmake --build .
+ninja
 
 if errorlevel 1 (
     echo [ERROR] Build failed!
@@ -58,9 +46,10 @@ if errorlevel 1 (
     exit /b 1
 )
 
-REM === Copy DLLs vào build ===
+REM === Copy DLLs ===
 echo [INFO] Copying DLLs...
-xcopy "%MSYS_ROOT%\mingw64\bin\*.dll" . /Y >nul
+copy "%MSYS_ROOT%\mingw64\bin\*.dll" . >nul 2>&1
 
 echo [INFO] Build complete!
+echo [INFO] To run: make sure %MSYS_ROOT%\mingw64\bin is in your Windows PATH
 pause

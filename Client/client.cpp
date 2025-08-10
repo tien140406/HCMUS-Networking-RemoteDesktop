@@ -61,7 +61,9 @@ std::map<std::string, std::pair<std::string, std::string>> fileCommands = {
      {"Installed programs from remote computer", "installed_programs.txt"}},
     {"start_recording",
      {"Video recording from remote computer", "recording.avi"}},
-    {"keylogger", {"Keylogger log from remote computer", "keylog.txt"}}};
+    {"keylogger", {"Keylogger log from remote computer", "keylog.txt"}},
+    {"stop_recording",
+     {"Video recording from remote computer", "recording.avi"}}};
 
 void signal_handler(int) { running.store(false); }
 

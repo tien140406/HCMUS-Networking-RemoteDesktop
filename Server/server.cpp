@@ -4,7 +4,6 @@
 
 const string saveDir = "C:/MMT/";
 
-
 // Các command cần tạo file output
 std::map<std::string, std::string> fileCommands = {
     {"get_screenshot", saveDir + "screenshot.png"},
@@ -65,6 +64,28 @@ static std::string trim(const std::string& s) {
 // Xử lý client - server chỉ thực thi và gửi kết quả
 void handle_client(SOCKET clientSocket) {
   std::cout << "[Connection] Client connected" << std::endl;
+
+  int sendBufSize = 512 * 1024;  // 64KB send buffer
+  int recvBufSize = 512 * 1024;  // 64KB receive buffer
+  int timeout = 600000;         // 5 minutes timeout
+  int keepAlive = 1;            // Enable keep-alive
+  int noDelay = 1;              // Disable Nagle algorithm
+
+  setsockopt(clientSocket, SOL_SOCKET, SO_SNDBUF, (char*)&sendBufSize,
+             sizeof(sendBufSize));
+  setsockopt(clientSocket, SOL_SOCKET, SO_RCVBUF, (char*)&recvBufSize,
+             sizeof(recvBufSize));
+  setsockopt(clientSocket, SOL_SOCKET, SO_SNDTIMEO, (char*)&timeout,
+             sizeof(timeout));
+  setsockopt(clientSocket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout,
+             sizeof(timeout));
+  setsockopt(clientSocket, SOL_SOCKET, SO_KEEPALIVE, (char*)&keepAlive,
+             sizeof(keepAlive));
+  setsockopt(clientSocket, IPPROTO_TCP, TCP_NODELAY, (char*)&noDelay,
+             sizeof(noDelay));
+
+  std::cout << "[Config] Socket configured for large file transfer"
+            << std::endl;
 
   try {
     std::string message = receive_command(clientSocket);

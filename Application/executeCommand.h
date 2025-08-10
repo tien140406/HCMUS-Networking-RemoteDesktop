@@ -8,6 +8,7 @@
 #include "keylogger.h"
 #include "recording.h"
 
+
 // Các hàm execute cơ bản (không gửi email)
 void execute_command(const string& command);
 
@@ -31,3 +32,10 @@ void handle_restart();
 void handle_cancel_shutdown();
 void handle_stop_recording();
 void handle_start_recording(const std::string& outFile);
+
+void handle_stop_process(const string& command);
+void handle_stop_program(const string& command);
+void handle_start_process(const string& command);
+bool terminate_process_by_name(const string& processName);
+bool terminate_process_by_id(DWORD processID);
+DWORD find_process_id(const string& processName);

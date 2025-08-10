@@ -25,6 +25,7 @@
 #include <chrono>
 #include <mutex>
 #include <filesystem>
+#include <psapi.h>
 #pragma comment(lib, "ws2_32.lib")
 
 using std::cerr, std::endl, std::cout;

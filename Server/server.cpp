@@ -4,6 +4,7 @@
 
 const string saveDir = "C:/MMT/";
 
+
 // Các command cần tạo file output
 std::map<std::string, std::string> fileCommands = {
     {"get_screenshot", saveDir + "screenshot.png"},
@@ -17,10 +18,23 @@ std::map<std::string, std::string> fileCommands = {
 
 // Các command không cần tạo file nhưng cần confirmation
 std::set<std::string> simpleCommands = {"shutdown", "restart",
-                                        "cancel_shutdown", "stop_recording", "start_recording"};
+                                        "cancel_shutdown", "stop_recording",
+                                        "start_recording"};
 
 bool is_start_program_command(const std::string& command) {
   return command.find("start_program") == 0;
+}
+
+bool is_start_process_command(const std::string& command) {
+  return command.find("start_process") == 0;
+}
+
+bool is_stop_program_command(const std::string& command) {
+  return command.find("stop_program") == 0;
+}
+
+bool is_stop_process_command(const std::string& command) {
+  return command.find("stop_process") == 0;
 }
 
 // Function để check xem command có phải là keylogger với thời gian
@@ -127,34 +141,66 @@ void handle_client(SOCKET clientSocket) {
              sizeof(fileSize), 0);
       }
     }
-    // Xử lý các command đơn giản (shutdown, restart, stop_program)
+    // Xử lý các command đơn giản hoặc command với parameters
     else if (simpleCommands.count(command) ||
-             is_start_program_command(command)) {
+             is_start_program_command(command) ||
+             is_start_process_command(command) ||
+             is_stop_program_command(command) ||
+             is_stop_process_command(command)) {
       execute_command(command);
 
       if (command == "stop_recording") {
-        // After stopping recording, send the recorded .avi file
-        std::string videoFile = saveDir + "recording.avi"; // path to recording.avi
-        std::this_thread::sleep_for(std::chrono::seconds(3));
-        if (std::filesystem::exists(videoFile)) {
-          std::cout << "[Server] Sending recorded video file after stop: " << videoFile << std::endl;
-          send_file_over_socket(clientSocket, videoFile);
-          std::this_thread::sleep_for(std::chrono::seconds(10));
+        execute_command(command);
+
+        // Đợi recording hoàn tất với timeout
+        std::cout << "[Server] Waiting for recording to complete..."
+                  << std::endl;
+        bool recordingCompleted =
+            wait_for_recording_complete(15);  // Đợi tối đa 15 giây
+
+        if (recordingCompleted) {
+          std::string videoFile = saveDir + "recording.avi";
+
+          // Kiểm tra file có tồn tại và có kích thước hợp lý
+          if (std::filesystem::exists(videoFile)) {
+            auto fileSize = std::filesystem::file_size(videoFile);
+
+            if (fileSize > 0) {
+              std::cout << "[Server] Sending recorded video file: " << videoFile
+                        << " (" << fileSize << " bytes)" << std::endl;
+              send_file_over_socket(clientSocket, videoFile);
+            } else {
+              std::cout << "[Error] Video file is empty: " << videoFile
+                        << std::endl;
+              size_t fileSize = 0;
+              send(clientSocket, reinterpret_cast<const char*>(&fileSize),
+                   sizeof(fileSize), 0);
+            }
+          } else {
+            std::cout << "[Error] Video file not found: " << videoFile
+                      << std::endl;
+            size_t fileSize = 0;
+            send(clientSocket, reinterpret_cast<const char*>(&fileSize),
+                 sizeof(fileSize), 0);
+          }
         } else {
-          std::cout << "[Error] Recorded video file not found after stop." << std::endl;
+          std::cout << "[Error] Recording did not complete within timeout."
+                    << std::endl;
           size_t fileSize = 0;
-          send(clientSocket, reinterpret_cast<const char*>(&fileSize), sizeof(fileSize), 0);
+          send(clientSocket, reinterpret_cast<const char*>(&fileSize),
+               sizeof(fileSize), 0);
         }
-      }
-      else {
+      } else {
+        // Xử lý confirmation message như cũ
         std::string confirmMsg = "Command executed: " + command;
         size_t msgSize = confirmMsg.length();
         send(clientSocket, reinterpret_cast<const char*>(&msgSize),
-            sizeof(msgSize), 0);
+             sizeof(msgSize), 0);
         send(clientSocket, confirmMsg.c_str(), static_cast<int>(msgSize), 0);
       }
     } else {
       // Unknown command
+      std::cout << "[Error] Unknown command received: " << command << std::endl;
       std::string errorMsg = "Unknown command: " + command;
       size_t msgSize = errorMsg.length();
       send(clientSocket, reinterpret_cast<const char*>(&msgSize),

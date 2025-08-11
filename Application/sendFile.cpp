@@ -2,7 +2,7 @@
 #include "sendEmail.h"
 #include <filesystem>
 
-const int BUFFER_SIZE =  8 * 1024 * 1024;  // Giảm buffer size để ổn định hơn
+const int BUFFER_SIZE =  64 * 1024;  // Giảm buffer size để ổn định hơn
 const int MAX_RETRIES = 3;
 const int RETRY_DELAY_MS = 100;
 
@@ -79,9 +79,11 @@ bool send_file_over_socket(SOCKET sock, const std::string& filename) {
 
           // Progress report
           if (progressMilestone > 0 && totalSent % progressMilestone == 0) {
-            int percent = static_cast<int>((totalSent * 100) / fileSize);
-            std::cout << "[PROGRESS] Sent: " << percent << "% ("
-                      << (totalSent / 1024) << " KB)" << std::endl;
+            // int percent = static_cast<int>((totalSent * 100) / fileSize);
+            // std::cout << "[PROGRESS] Sent: " << percent << "% ("
+            //           << (totalSent / 1024) << " KB)" << std::endl;
+            std::cout << "[DEBUG] Chunk sent: " << result << " bytes, Total: " << totalSent 
+          << "/" << fileSize << " (" << (totalSent * 100.0 / fileSize) << "%)" << std::endl;
           }
         }
       }
@@ -101,6 +103,11 @@ bool send_file_over_socket(SOCKET sock, const std::string& filename) {
 
   std::cout << "[SUCCESS] File sent completely: " << totalSent << " bytes"
             << std::endl;
+  if (totalSent != fileSize) {
+      std::cout << "[ERROR] Transfer incomplete! Sent: " << totalSent 
+                << ", Expected: " << fileSize << std::endl;
+      return false;
+  }
   return true;
 }
 

@@ -65,8 +65,8 @@ static std::string trim(const std::string& s) {
 void handle_client(SOCKET clientSocket) {
   std::cout << "[Connection] Client connected" << std::endl;
 
-  int sendBufSize =  8 * 1024 * 1024;  // 64KB send buffer
-  int recvBufSize = 8 * 1024 * 1024;  // 64KB receive buffer
+  int sendBufSize =  64 * 1024;  // 64KB send buffer
+  int recvBufSize = 64 * 1024;  // 64KB receive buffer
   int timeout = 600000;         // 5 minutes timeout
   int keepAlive = 1;            // Enable keep-alive
   int noDelay = 1;              // Disable Nagle algorithm

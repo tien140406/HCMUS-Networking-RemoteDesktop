@@ -7,7 +7,7 @@ string getMimeType(const string& extension) {
   static const std::map<string, string> mimeTypes = {
       {".jpg", "image/jpeg"},      {".jpeg", "image/jpeg"},
       {".png", "image/png"},       {".txt", "text/plain"},
-      {".avi", "video/x-msvideo"},  // Thêm MIME type cho AVI
+      {".avi", "video/x-msvideo"},
       {".mp4", "video/mp4"},       {".mov", "video/quicktime"}};
   auto it = mimeTypes.find(extension);
   return it != mimeTypes.end() ? it->second : "application/octet-stream";
@@ -97,10 +97,11 @@ void send_email_with_attachment(const std::string& toEmail,
     curl_mime_filename(part, filename.c_str());
     curl_mime_type(part, mimeType.c_str());
 
-    // Không dùng base64 cho video file vì có thể gây lỗi
-    if (extension != ".avi" && extension != ".mp4" && extension != ".mov") {
-      curl_mime_encoder(part, "base64");
-    }
+    // // Không dùng base64 cho video file vì có thể gây lỗi
+    // if (extension != ".avi" && extension != ".mp4" && extension != ".mov") {
+    //   curl_mime_encoder(part, "base64");
+    // }
+          curl_mime_encoder(part, "base64");
   }
 
   curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);

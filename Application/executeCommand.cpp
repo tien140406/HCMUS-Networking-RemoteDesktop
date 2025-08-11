@@ -359,8 +359,6 @@ void execute_command(const string& command) {
     handle_cancel_shutdown();
   } else if (command == "stop_recording") {
     handle_stop_recording();
-  } else if (command.find("keylogger") == 0) {
-    handle_keylogger(command, "C:/MMT/keylog.txt");
   } else {
     cout << "[Execute] Unknown command: " << command << endl;
   }

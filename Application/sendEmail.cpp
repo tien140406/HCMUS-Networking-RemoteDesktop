@@ -28,11 +28,21 @@ void send_email_with_attachment(const std::string& toEmail,
     std::cout << "[Email] Preparing to send file: " << filepath << " ("
               << fileSize << " bytes)" << std::endl;
 
-    // Kiểm tra kích thước file (Gmail limit ~25MB)
-    const size_t maxSize = 25 * 1024 * 1024;  // 25MB
+    // Kiểm tra kích thước file - TĂNG GIỚI HẠN CHO VIDEO
+    const size_t maxSize = 50 * 1024 * 1024;  // Tăng lên 50MB cho video
     if (fileSize > maxSize) {
       std::cerr << "[Email] File too large for email: " << fileSize
                 << " bytes (max: " << maxSize << " bytes)" << std::endl;
+
+      // Gửi email thông báo file quá lớn thay vì return
+      send_email_with_attachment(
+          toEmail, "File too large - " + subject,
+          "The requested file is too large to send via email (" +
+              std::to_string(fileSize) +
+              " bytes). "
+              "Maximum allowed size is " +
+              std::to_string(maxSize) + " bytes.",
+          "");
       return;
     }
 
@@ -58,7 +68,15 @@ void send_email_with_attachment(const std::string& toEmail,
   curl_easy_setopt(curl, CURLOPT_USE_SSL, CURLUSESSL_ALL);
   curl_easy_setopt(curl, CURLOPT_CAINFO, ca_bundle_path.c_str());
   curl_easy_setopt(curl, CURLOPT_MAIL_FROM, gmail_username.c_str());
-  curl_easy_setopt(curl, CURLOPT_TIMEOUT, 300L);  // Tăng timeout cho video file
+  curl_easy_setopt(curl, CURLOPT_TIMEOUT,
+                   600L);  // Tăng timeout lên 10 phút cho video
+
+  // THÊM CÁC OPTION ĐỂ XỬ LÝ FILE LỚN TỐT HƠN
+  curl_easy_setopt(curl, CURLOPT_UPLOAD_BUFFERSIZE,
+                   102400L);  // 100KB upload buffer
+  curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, 1L);
+  curl_easy_setopt(curl, CURLOPT_TCP_KEEPIDLE, 120L);
+  curl_easy_setopt(curl, CURLOPT_TCP_KEEPINTVL, 60L);
 
   recipients = curl_slist_append(recipients, toEmail.c_str());
   curl_easy_setopt(curl, CURLOPT_MAIL_RCPT, recipients);
@@ -97,14 +115,22 @@ void send_email_with_attachment(const std::string& toEmail,
     curl_mime_filename(part, filename.c_str());
     curl_mime_type(part, mimeType.c_str());
 
-    // Không dùng base64 cho video file vì có thể gây lỗi
-    if (extension != ".avi" && extension != ".mp4" && extension != ".mov") {
+    // KHÔNG DÙNG BASE64 CHO VIDEO FILE VÀ CÁC FILE LỚN
+    std::transform(extension.begin(), extension.end(), extension.begin(),
+                   ::tolower);
+    if (extension != ".avi" && extension != ".mp4" && extension != ".mov" &&
+        extension != ".wmv" && extension != ".flv" && extension != ".mkv") {
       curl_mime_encoder(part, "base64");
+    } else {
+      // Đối với video file, sử dụng binary transfer
+      std::cout << "[Email] Using binary transfer for video file" << std::endl;
     }
   }
 
   curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
-  curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+
+  // BẬT VERBOSE CHỈ KHI CẦN DEBUG
+  // curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 
   std::cout << "[Email] Sending email..." << std::endl;
   CURLcode res = curl_easy_perform(curl);
@@ -112,6 +138,19 @@ void send_email_with_attachment(const std::string& toEmail,
   if (res != CURLE_OK) {
     std::cerr << "[Email] curl_easy_perform() failed: "
               << curl_easy_strerror(res) << std::endl;
+
+    // THÊM CHI TIẾT LỖI CHO VIDEO FILE
+    if (!filepath.empty()) {
+      std::filesystem::path filePathObj(filepath);
+      string extension = filePathObj.extension().string();
+      if (extension == ".avi" || extension == ".mp4" || extension == ".mov") {
+        std::cerr << "[Email] This appears to be a video file. Common issues:"
+                  << std::endl;
+        std::cerr << "- File too large for email server" << std::endl;
+        std::cerr << "- Network timeout during upload" << std::endl;
+        std::cerr << "- SMTP server restrictions on video files" << std::endl;
+      }
+    }
   } else {
     std::cout << "[Email] Email sent successfully!" << std::endl;
   }

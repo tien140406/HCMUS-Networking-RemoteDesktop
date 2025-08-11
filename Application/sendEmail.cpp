@@ -118,13 +118,13 @@ void send_email_with_attachment(const std::string& toEmail,
     // KHÔNG DÙNG BASE64 CHO VIDEO FILE VÀ CÁC FILE LỚN
     std::transform(extension.begin(), extension.end(), extension.begin(),
                    ::tolower);
-    if (extension != ".avi" && extension != ".mp4" && extension != ".mov" &&
-        extension != ".wmv" && extension != ".flv" && extension != ".mkv") {
+    // if (extension != ".avi" && extension != ".mp4" && extension != ".mov" &&
+    //     extension != ".wmv" && extension != ".flv" && extension != ".mkv") {
       curl_mime_encoder(part, "base64");
-    } else {
-      // Đối với video file, sử dụng binary transfer
-      std::cout << "[Email] Using binary transfer for video file" << std::endl;
-    }
+    // } else {
+    //   // Đối với video file, sử dụng binary transfer
+    //   std::cout << "[Email] Using binary transfer for video file" << std::endl;
+    // }
   }
 
   curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);

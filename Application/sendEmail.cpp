@@ -7,7 +7,7 @@ string getMimeType(const string& extension) {
   static const std::map<string, string> mimeTypes = {
       {".jpg", "image/jpeg"},      {".jpeg", "image/jpeg"},
       {".png", "image/png"},       {".txt", "text/plain"},
-      {".avi", "video/x-msvideo"},  // Thêm MIME type cho AVI
+      {".avi", "video/x-msvideo"},
       {".mp4", "video/mp4"},       {".mov", "video/quicktime"}};
   auto it = mimeTypes.find(extension);
   return it != mimeTypes.end() ? it->second : "application/octet-stream";

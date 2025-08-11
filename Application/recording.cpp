@@ -158,7 +158,7 @@ void stop_recording() {
   }
 
   // Đợi một chút để file system hoàn tất việc ghi
-  std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  std::this_thread::sleep_for(std::chrono::milliseconds(3000));
 
   std::string savedPath;
   {
@@ -169,13 +169,21 @@ void stop_recording() {
   // Kiểm tra file có tồn tại và có kích thước hợp lý không
   if (std::filesystem::exists(savedPath)) {
     auto fileSize = std::filesystem::file_size(savedPath);
-    std::cout << "[Server] Recording stopped and video saved: " << savedPath
-              << " (" << fileSize << " bytes)" << std::endl;
+
+    cv::VideoCapture testCap(savedPath);
+    if (testCap.isOpened()) {
+      int totalFrames = testCap.get(cv::CAP_PROP_FRAME_COUNT);
+      double videoFps = testCap.get(cv::CAP_PROP_FPS);
+      double duration = totalFrames / videoFps;
+
+      std::cout << "[Server] Video verified - Duration: " << duration
+                << "s, Frames: " << totalFrames << ", Size: " << fileSize
+                << " bytes" << std::endl;
+      testCap.release();
+    }
+
     fileReady.store(true);
     recordingComplete.notify_all();
-  } else {
-    std::cerr << "[Server] Error: Video file was not created properly!"
-              << std::endl;
   }
 }
 

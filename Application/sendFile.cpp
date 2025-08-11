@@ -2,7 +2,7 @@
 #include "sendEmail.h"
 #include <filesystem>
 
-const int BUFFER_SIZE =  512 * 1024;  // Giảm buffer size để ổn định hơn
+const int BUFFER_SIZE =  8 * 1024 * 1024;  // Giảm buffer size để ổn định hơn
 const int MAX_RETRIES = 3;
 const int RETRY_DELAY_MS = 100;
 

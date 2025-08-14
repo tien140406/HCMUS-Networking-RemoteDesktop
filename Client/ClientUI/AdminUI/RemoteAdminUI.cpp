@@ -142,4 +142,3 @@ void RemoteAdminUI::CheckEmailAutomatically() {
         }
     }
 }
-

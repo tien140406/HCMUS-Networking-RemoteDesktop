@@ -131,6 +131,7 @@ file(GLOB CLIENT_SOURCES
     Core/*.cpp
     Client/*.cpp
     Client/ClientHandle/*.cpp
+    Client/ClientUI/AdminUI/*.cpp
     Client/ClientUI/*.cpp
 )
 

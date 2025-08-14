@@ -52,16 +52,22 @@ void SetCustomImGuiStyle() {
     colors[ImGuiCol_Text]                 = ImVec4(0.10f, 0.10f, 0.10f, 1.00f);
     colors[ImGuiCol_TextDisabled]         = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
 
-    // Sliders and checks
-    colors[ImGuiCol_SliderGrab]           = ImVec4(0.60f, 0.70f, 0.85f, 1.00f);
-    colors[ImGuiCol_SliderGrabActive]     = ImVec4(0.40f, 0.55f, 0.80f, 1.00f);
+    // Sliders
+    colors[ImGuiCol_SliderGrab]           = ImVec4(0.50f, 0.65f, 0.85f, 1.00f);
+    colors[ImGuiCol_SliderGrabActive]     = ImVec4(0.35f, 0.55f, 0.80f, 1.00f);
     colors[ImGuiCol_CheckMark]            = ImVec4(0.20f, 0.40f, 0.70f, 1.00f);
+
+    // Scrollbars (prettier)
+    colors[ImGuiCol_ScrollbarBg]          = ImVec4(0.94f, 0.94f, 0.94f, 1.00f); // Background track
+    colors[ImGuiCol_ScrollbarGrab]        = ImVec4(0.75f, 0.80f, 0.85f, 1.00f); // Grip idle
+    colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.60f, 0.75f, 0.85f, 1.00f); // Grip hover
+    colors[ImGuiCol_ScrollbarGrabActive]  = ImVec4(0.40f, 0.50f, 0.60f, 0.80f); // Grip dragging
 
     // Style settings
     style.WindowRounding     = 8.0f;
     style.FrameRounding      = 6.0f;
     style.GrabRounding       = 4.0f;
-    style.ScrollbarRounding  = 6.0f;
+    style.ScrollbarRounding  = 8.0f; // Round scrollbar corners
     style.TabRounding        = 4.0f;
 
     style.WindowPadding      = ImVec2(12, 12);

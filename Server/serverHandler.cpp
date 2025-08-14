@@ -64,11 +64,9 @@ void handle_client(SOCKET clientSocket) {
         }
 
         std::istringstream iss(message);
-        std::string sender_email, command;
-        std::getline(iss, sender_email);
+        std::string command;
         std::getline(iss, command);
 
-        sender_email = trim(sender_email);
         command = trim(command);
 
         std::cout << "[Server] Processing command: " << command << std::endl;
@@ -98,5 +96,5 @@ void handle_client(SOCKET clientSocket) {
     }
 
     closesocket(clientSocket);
-    std::cout << "[Disconnect] Client disconnected" << std::endl;
+    //std::cout << "[Disconnect] Client disconnected" << std::endl;
 }

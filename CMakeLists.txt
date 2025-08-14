@@ -117,7 +117,9 @@ target_link_libraries(imgui PUBLIC
 # ======= Include Directories =======
 include_directories(
     ${CMAKE_SOURCE_DIR}/Core
+    ${CMAKE_SOURCE_DIR}/thirdparty
     ${OpenCV_INCLUDE_DIRS}
+
 )
 
 if(CURL_FOUND)

@@ -3,10 +3,19 @@
 #include "imgui.h"
 #include <vector>
 #include <chrono>
+#include <GL/gl.h>
+#include <opencv2/opencv.hpp>
+
+struct ImageData {
+    GLuint texture = 0;
+    int width = 0;
+    int height = 0;
+};
 
 class RemoteAdminUI {
 private:
     // Connection state
+    SOCKET mySock;
     char serverIP[64] = "127.0.0.1";
     char serverPort[16] = "8888";
     bool isConnected = false;
@@ -38,6 +47,23 @@ private:
     void CheckEmailAutomatically();
     
     // UI Rendering methods
+    // File display variables
+    GLuint currentResultTexture = 0;
+    int currentResultWidth = 0;
+    int currentResultHeight = 0;
+    std::string currentResultFileName = "";
+    std::string currentResultText = "";
+
+    cv::VideoCapture currentVideo;
+    bool isVideoPlaying = false;
+    bool isVideoPaused = false;
+    double videoFPS = 0.0;
+    int videoFrameCount = 0;
+    int currentVideoFrame = 0;
+    std::chrono::steady_clock::time_point lastFrameTime;
+    GLuint videoTexture = 0;
+
+    void RenderFileDisplay();
     void RenderConnectionPanel();
     void RenderModeSwitch();
     void RenderEmailMode();
@@ -47,11 +73,28 @@ private:
     void RenderApplicationManagement();
     void RenderSystemCommands();
     void RenderMonitoringAndFiles();
+    ImVec2 CalculateImageSize(int imageWidth, int imageHeight);
+    ImageData LoadImageTexture(const std::string& filepath);
+    void LoadMedia(const std::string& filepath);
+
+    void UpdateVideoFrame();
+    void RenderVideoControls();
+    GLuint CreateTextureFromMat(const cv::Mat& mat);
 
 public:
     RemoteAdminUI();
     ~RemoteAdminUI();
     
+    void SetResultImage(GLuint texture, int width, int height, const std::string& filename);
+    void SetResultText(const std::string& text);
     void AddResult(const std::string& message, ImVec4 color = ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+    void ClearResult();
     void Render();
+
+    void SeekVideo(int frame);
+    void PlayPauseVideo();
+    void StopVideo();
+    void PlayVideo(const std::string& filepath);
+
+    UIMode GetCurrentMode() const { return currentMode; }
 };

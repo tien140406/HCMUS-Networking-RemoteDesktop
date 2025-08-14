@@ -1,7 +1,6 @@
 #pragma once
 #include "lib.h"
 #include "listProgram.h"
-#include "config.h"
 #include "shutdownProgram.h"
 #include "sendPicture.h"
 #include "sendScreenshot.h"
@@ -19,8 +18,6 @@ void execute_command_with_file(const string& command, const string& outputFile);
 int parse_keylogger_duration(const string& command);
 
 // Các hàm handle riêng lẻ
-void handle_start_program(const std::string& command);
-void handle_shutdown_program(const std::string& command);
 void handle_get_picture(const std::string& outFile);
 void handle_get_screenshot(const std::string& outFile);
 void handle_list_programs(const std::string& outFile);   // Running programs
@@ -33,6 +30,7 @@ void handle_cancel_shutdown();
 void handle_stop_recording();
 void handle_start_recording(const std::string& outFile);
 
+void handle_start_program(const std::string& command);
 void handle_stop_process(const string& command);
 void handle_stop_program(const string& command);
 void handle_start_process(const string& command);

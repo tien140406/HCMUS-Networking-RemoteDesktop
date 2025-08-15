@@ -461,13 +461,13 @@ void RemoteAdminUI::RenderHelpPanel() {
 
                 // Row 1
                 ImGui::TableNextRow();
-                ImGui::TableSetColumnIndex(0); CellText("List / Start / Stop running processes", ImVec4(0, 0, 0, 1), true);
+                ImGui::TableSetColumnIndex(0); CellText("List / Start / Stop \n running processes", ImVec4(0, 0, 0, 1), true);
                 ImGui::TableSetColumnIndex(1); CellText(" list_process\n start_process [name]\n stop_process [name]", ImVec4(0, 0.6f, 0.8f, 1));
                 ImGui::TableSetColumnIndex(2); CellText("list_process\nstart_process calc\nstop_process notepad", ImVec4(0.5f, 0.5f, 0.5f, 1));
 
                 // Row 2
                 ImGui::TableNextRow();
-                ImGui::TableSetColumnIndex(0); CellText("Start / Stop applications", ImVec4(0, 0, 0, 1), true);
+                ImGui::TableSetColumnIndex(0); CellText("Start / Stop \n applications", ImVec4(0, 0, 0, 1), true);
                 ImGui::TableSetColumnIndex(1); CellText(" start_program [name]\n stop_program [name]", ImVec4(0, 0.6f, 0.8f, 1));
                 ImGui::TableSetColumnIndex(2); CellText("start_program notepad\nstop_program calc", ImVec4(0.5f, 0.5f, 0.5f, 1));
 
@@ -497,7 +497,7 @@ void RemoteAdminUI::RenderHelpPanel() {
 
                 // Row 7
                 ImGui::TableNextRow();
-                ImGui::TableSetColumnIndex(0); CellText("Restart / Shutdown machine", ImVec4(0, 0, 0, 1), true);
+                ImGui::TableSetColumnIndex(0); CellText("Restart / Shutdown \n machine", ImVec4(0, 0, 0, 1), true);
                 ImGui::TableSetColumnIndex(1); CellText(" reset\n shutdown", ImVec4(0, 0.6f, 0.8f, 1));
                 ImGui::TableSetColumnIndex(2); CellText("reset\nshutdown", ImVec4(0.5f, 0.5f, 0.5f, 1));
 

@@ -148,7 +148,7 @@ add_executable(Client ${CLIENT_SOURCES})
 target_link_libraries(Client PRIVATE
     imgui
     ${OpenCV_LIBS}
-    ${CURL_LIBRARY}
+    ${CURL_LIBRARIES}
     ws2_32
     wldap32
 )
@@ -157,7 +157,7 @@ add_executable(Server ${SERVER_SOURCES})
 target_link_libraries(Server PRIVATE
     imgui
     ${OpenCV_LIBS}
-    ${CURL_LIBRARY}
+    ${CURL_LIBRARIES}
     ws2_32
     wldap32
 )

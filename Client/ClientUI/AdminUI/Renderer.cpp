@@ -56,15 +56,20 @@ void RemoteAdminUI::RenderVideoControls() {
     
     // Progress bar
     ImGui::SameLine();
-    float progress = ((videoFrameCount > 0) ? (float)currentVideoFrame / videoFrameCount : 0.0f);
-    float progressPercent = progress*100;
+    float progress = (videoFrameCount > 0) 
+        ? static_cast<float>(currentVideoFrame) / videoFrameCount 
+        : 0.0f;
+    float progressPercent = progress * 100.0f;
 
     ImGui::PushItemWidth(500);
     if (ImGui::SliderFloat("##Progress", &progressPercent, 0.0f, 100.0f, "%.1f%%")) {
+        // Convert slider's new percent → normalized progress
+        progress = progressPercent / 100.0f;
         int targetFrame = static_cast<int>(progress * videoFrameCount);
         SeekVideo(targetFrame);
     }
     ImGui::PopItemWidth();
+
     
     // Frame info
     ImGui::SameLine();
@@ -192,13 +197,14 @@ void RemoteAdminUI::RenderModeSwitch() {
 
 void RemoteAdminUI::RenderEmailMode() {
     // Update email checking
-    CheckEmailAutomatically();
+    RenderHelpPanel();
     if (ImGui::CollapsingHeader("Email Command Monitor", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::Text("Last Check: %s", lastEmailCheck.c_str());
         ImGui::Text("Status: %s", emailStatus.c_str());
         ImGui::Separator();
         ImGui::TextWrapped("Automatically checking for email commands every 5 seconds...");
     }
+    CheckEmailAutomatically();
 }
 
 void RemoteAdminUI::RenderProcessManagement() {
@@ -309,7 +315,6 @@ void RemoteAdminUI::RenderMonitoringAndFiles() {
         ImGui::PopItemWidth();
         ImGui::SameLine();
         if (ImGui::Button("Start Keylogger")) {
-            std::cout << "oe oe\n";
             ExecuteCommand(CommandState::KEYLOGGER);
         }
         if (ImGui::IsItemHovered()) {
@@ -401,3 +406,99 @@ void RemoteAdminUI::RenderResults() {
     }
 }
 
+void RemoteAdminUI::RenderHelpPanel() {
+    if (ImGui::CollapsingHeader("Email Command Reference", ImGuiTreeNodeFlags_DefaultOpen)) {
+
+        if (ImGui::BeginChild("EmailHelpTable", ImVec2(0, 300), true)) {
+            // Footer text
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 0.0f, 0.0f, 1.0f));
+            ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]); // Bold font
+            ImGui::Text("HOW TO USE: Send commands via email with subject 'REMOTE CONTROL' followed by the command.");
+            ImGui::PopFont();
+            ImGui::PopStyleColor();
+            ImGui::Spacing(); ImGui::Spacing();
+            // Title styling
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 0.0f, 0.0f, 1.0f));            // Black text
+            ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.9f, 0.95f, 0.96f, 0.8f));        // Light blue background
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 8.0f);                         // Rounded corners
+            ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);                                // Bold font
+            ImGui::Text("EMAIL COMMAND REFERENCE TABLE");
+            ImGui::PopFont();
+            ImGui::PopStyleVar();
+            ImGui::PopStyleColor(2);
+            ImGui::Separator();
+
+            // Table styling - including header background
+            ImGui::PushStyleColor(ImGuiCol_TableHeaderBg, ImVec4(0.85f, 0.9f, 1.0f, 1.0f));     // Light grey-blue for header
+            ImGui::PushStyleColor(ImGuiCol_TableRowBg, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));         // White
+            ImGui::PushStyleColor(ImGuiCol_TableRowBgAlt, ImVec4(0.95f, 0.95f, 0.95f, 1.0f));   // Light grey
+
+            if (ImGui::BeginTable("CommandTable", 3,
+                ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
+
+                // Column headers
+                ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]); // Bold font
+                ImGui::TableSetupColumn("Feature", ImGuiTableColumnFlags_WidthFixed, 120.0f);
+                ImGui::TableSetupColumn("Command", ImGuiTableColumnFlags_WidthFixed, 180.0f);
+                ImGui::TableSetupColumn("Example", ImGuiTableColumnFlags_WidthStretch);
+                ImGui::TableHeadersRow();
+                ImGui::PopFont();
+
+                // Helper lambda for consistent colored text
+                auto CellText = [](const char* text, ImVec4 color, bool bold = false) {
+                    ImGui::PushStyleColor(ImGuiCol_Text, color);
+                    if (bold) ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
+                    ImGui::TextWrapped("%s", text);
+                    if (bold) ImGui::PopFont();
+                    ImGui::PopStyleColor();
+                };
+
+                // Row 1
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0); CellText("List / Start / Stop running processes", ImVec4(0, 0, 0, 1), true);
+                ImGui::TableSetColumnIndex(1); CellText(" list_process\n start_process [name]\n stop_process [name]", ImVec4(0, 0.6f, 0.8f, 1));
+                ImGui::TableSetColumnIndex(2); CellText("list_process\nstart_process calc\nstop_process notepad", ImVec4(0.5f, 0.5f, 0.5f, 1));
+
+                // Row 2
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0); CellText("Start / Stop applications", ImVec4(0, 0, 0, 1), true);
+                ImGui::TableSetColumnIndex(1); CellText(" start_program [name]\n stop_program [name]", ImVec4(0, 0.6f, 0.8f, 1));
+                ImGui::TableSetColumnIndex(2); CellText("start_program notepad\nstop_program calc", ImVec4(0.5f, 0.5f, 0.5f, 1));
+
+                // Row 3
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0); CellText("Capture entire screen", ImVec4(0, 0, 0, 1), true);
+                ImGui::TableSetColumnIndex(1); CellText(" screenshot", ImVec4(0, 0.6f, 0.8f, 1));
+                ImGui::TableSetColumnIndex(2); CellText("screenshot", ImVec4(0.5f, 0.5f, 0.5f, 1));
+
+                // Row 4
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0); CellText("Capture keystrokes", ImVec4(0, 0, 0, 1), true);
+                ImGui::TableSetColumnIndex(1); CellText(" keylogger\n keylogger [seconds]", ImVec4(0, 0.6f, 0.8f, 1));
+                ImGui::TableSetColumnIndex(2); CellText("keylogger\nkeylogger 29", ImVec4(0.5f, 0.5f, 0.5f, 1));
+
+                // Row 5
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0); CellText("Start / Stop webcam recording", ImVec4(0, 0, 0, 1), true);
+                ImGui::TableSetColumnIndex(1); CellText(" start_recording\n stop_recording", ImVec4(0, 0.6f, 0.8f, 1));
+                ImGui::TableSetColumnIndex(2); CellText("start_recording\nstop_recording", ImVec4(0.5f, 0.5f, 0.5f, 1));
+
+                // Row 6
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0); CellText("Get file from remote machine", ImVec4(0, 0, 0, 1), true);
+                ImGui::TableSetColumnIndex(1); CellText(" send_file [full path]", ImVec4(0, 0.6f, 0.8f, 1));
+                ImGui::TableSetColumnIndex(2); CellText("send_file C:\\MMT\\testFile.txt", ImVec4(0.5f, 0.5f, 0.5f, 1));
+
+                // Row 7
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0); CellText("Restart / Shutdown machine", ImVec4(0, 0, 0, 1), true);
+                ImGui::TableSetColumnIndex(1); CellText(" reset\n shutdown", ImVec4(0, 0.6f, 0.8f, 1));
+                ImGui::TableSetColumnIndex(2); CellText("reset\nshutdown", ImVec4(0.5f, 0.5f, 0.5f, 1));
+
+                ImGui::EndTable();
+            }
+            ImGui::PopStyleColor(3); // TableHeaderBg, TableRowBg, TableRowBgAlt
+        }
+        ImGui::EndChild();
+    }
+}

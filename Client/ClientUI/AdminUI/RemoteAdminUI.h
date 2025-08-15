@@ -73,6 +73,7 @@ private:
     void RenderApplicationManagement();
     void RenderSystemCommands();
     void RenderMonitoringAndFiles();
+    void RenderHelpPanel();
     ImVec2 CalculateImageSize(int imageWidth, int imageHeight);
     ImageData LoadImageTexture(const std::string& filepath);
     void LoadMedia(const std::string& filepath);

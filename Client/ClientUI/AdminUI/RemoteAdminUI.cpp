@@ -69,13 +69,13 @@ void RemoteAdminUI::ExecuteCommand(CommandState command) {
             
         case CommandState::START_PROCESS:
             AddResult("Executing: Start Process - " + std::string(processName), Colors::INFO);
-            send_manual_command("start_proccess " + std::string(processName), serverIP, std::stoi(serverPort));
+            send_manual_command("start_process " + std::string(processName), serverIP, std::stoi(serverPort));
             SimulateCommand("Started process: " + std::string(processName));
             break;
             
         case CommandState::KILL_PROCESS:
             AddResult("Executing: Kill Process - " + std::string(processName), Colors::INFO);
-            send_manual_command("stop_proccess", serverIP, std::stoi(serverPort));
+            send_manual_command("stop_process "  + std::string(processName), serverIP, std::stoi(serverPort));
             SimulateCommand("Killed process: " + std::string(processName));
             break;
             

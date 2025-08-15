@@ -59,8 +59,15 @@ void run_ui() {
     if (mode->width >= 1920) scaleFactor = 1.5f;
     if (mode->width >= 2560) scaleFactor = 2.0f;
 
-    // Load font with scaling
-    io.Fonts->AddFontFromFileTTF("..\\Fonts\\segoeui.ttf", 16.0f * scaleFactor);
+    // Load fonts with scaling
+    ImFont* regularFont = io.Fonts->AddFontFromFileTTF("..\\Fonts\\segoeui.ttf", 16.0f * scaleFactor);
+    ImFont* boldFont = io.Fonts->AddFontFromFileTTF("..\\Fonts\\segoeuib.ttf", 16.0f * scaleFactor); // Load bold font
+    if (!regularFont || !boldFont) {
+        std::cerr << "[UI] Failed to load one or more fonts" << std::endl;
+        // Fallback to default font if loading fails
+        io.Fonts->AddFontDefault();
+    }
+    io.Fonts->Build(); // Build the font atlas
 
     // Setup Platform/Renderer backends
     ImGui_ImplGlfw_InitForOpenGL(window, true);

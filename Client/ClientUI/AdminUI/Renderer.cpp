@@ -172,9 +172,10 @@ void RemoteAdminUI::RenderConnectionPanel() {
 
 void RemoteAdminUI::RenderModeSwitch() {
     if (ImGui::CollapsingHeader("Mode Selection", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::BeginDisabled(activeCommand != CommandState::IDLE);
+        ImGui::BeginDisabled(isConnected|| activeCommand != CommandState::IDLE);
         
         if (ImGui::RadioButton("Email Mode", currentMode == UIMode::EMAIL)) {
+            StartEmailCheckThread();
             currentMode = UIMode::EMAIL;
             lastCheckTime = std::chrono::steady_clock::now() - std::chrono::seconds(15);
         }
@@ -182,12 +183,18 @@ void RemoteAdminUI::RenderModeSwitch() {
         ImGui::SameLine();
         
         if (ImGui::RadioButton("Manual Mode", currentMode == UIMode::MANUAL)) {
+            StopEmailCheckThread();
             currentMode = UIMode::MANUAL;
         }
         
         ImGui::EndDisabled();
         
-        if (activeCommand != CommandState::IDLE) {
+        if (isConnected) {
+            ImGui::PushStyleColor(ImGuiCol_Text, Colors::WARNING);
+            ImGui::Text("Disconnect first to change mode.");
+            ImGui::PopStyleColor();
+        }
+        else if (activeCommand != CommandState::IDLE) {
             ImGui::PushStyleColor(ImGuiCol_Text, Colors::WARNING);
             ImGui::Text("Command is running... Please wait.");
             ImGui::PopStyleColor();
@@ -204,7 +211,6 @@ void RemoteAdminUI::RenderEmailMode() {
         ImGui::Separator();
         ImGui::TextWrapped("Automatically checking for email commands every 5 seconds...");
     }
-    CheckEmailAutomatically();
 }
 
 void RemoteAdminUI::RenderProcessManagement() {

@@ -5,6 +5,8 @@
 #include <chrono>
 #include <GL/gl.h>
 #include <opencv2/opencv.hpp>
+#include <thread>
+#include <atomic>
 
 struct ImageData {
     GLuint texture = 0;
@@ -15,6 +17,8 @@ struct ImageData {
 class RemoteAdminUI {
 private:
     // Connection state
+    std::atomic<bool> stopEmailThread{false};
+    std::thread emailThread;
     SOCKET mySock;
     char serverIP[64] = "127.0.0.1";
     char serverPort[16] = "8888";
@@ -44,7 +48,6 @@ private:
     void HandleConnect();
     void ExecuteCommand(CommandState command);
     void SimulateCommand(const std::string& result, ImVec4 color = Colors::SUCCESS);
-    void CheckEmailAutomatically();
     
     // UI Rendering methods
     // File display variables
@@ -81,6 +84,10 @@ private:
     void UpdateVideoFrame();
     void RenderVideoControls();
     GLuint CreateTextureFromMat(const cv::Mat& mat);
+
+    void StartEmailCheckThread();
+    void StopEmailCheckThread();
+    void SetMode(UIMode mode);
 
 public:
     RemoteAdminUI();

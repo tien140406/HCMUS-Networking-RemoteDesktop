@@ -172,19 +172,18 @@ void RemoteAdminUI::RenderConnectionPanel() {
 
 void RemoteAdminUI::RenderModeSwitch() {
     if (ImGui::CollapsingHeader("Mode Selection", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::BeginDisabled(isConnected|| activeCommand != CommandState::IDLE);
+        ImGui::BeginDisabled(isConnected || activeCommand != CommandState::IDLE);
         
         if (ImGui::RadioButton("Email Mode", currentMode == UIMode::EMAIL)) {
             StartEmailCheckThread();
-            currentMode = UIMode::EMAIL;
+            SetMode(UIMode::EMAIL);
             lastCheckTime = std::chrono::steady_clock::now() - std::chrono::seconds(15);
         }
         
         ImGui::SameLine();
         
         if (ImGui::RadioButton("Manual Mode", currentMode == UIMode::MANUAL)) {
-            StopEmailCheckThread();
-            currentMode = UIMode::MANUAL;
+            SetMode(UIMode::MANUAL);
         }
         
         ImGui::EndDisabled();
@@ -474,8 +473,8 @@ void RemoteAdminUI::RenderHelpPanel() {
                 // Row 3
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0); CellText("Capture entire screen", ImVec4(0, 0, 0, 1), true);
-                ImGui::TableSetColumnIndex(1); CellText(" screenshot", ImVec4(0, 0.6f, 0.8f, 1));
-                ImGui::TableSetColumnIndex(2); CellText("screenshot", ImVec4(0.5f, 0.5f, 0.5f, 1));
+                ImGui::TableSetColumnIndex(1); CellText(" get_screenshot", ImVec4(0, 0.6f, 0.8f, 1));
+                ImGui::TableSetColumnIndex(2); CellText("get_screenshot", ImVec4(0.5f, 0.5f, 0.5f, 1));
 
                 // Row 4
                 ImGui::TableNextRow();

@@ -21,6 +21,14 @@ RemoteAdminUI::~RemoteAdminUI() {
     WSACleanup();
 }
 
+std::string getFileName(const std::string& path) {
+    size_t pos1 = path.find_last_of("/\\"); // handles both '/' and '\'
+    if (pos1 == std::string::npos) {
+        return path;
+    }
+    return path.substr(pos1 + 1);
+}
+
 void RemoteAdminUI::AddResult(const std::string& message, ImVec4 color) {
     results.emplace_back(message, color);
     // Keep only last 100 messages
@@ -56,7 +64,13 @@ void RemoteAdminUI::HandleConnect() {
         // Simulate connection for demo
         isConnected = true;
         connectionStatus = "Connected";
-        AddResult("Connected to " + std::string(serverIP) + ":" + std::string(serverPort), Colors::SUCCESS);
+        AddResult("Connected to " + std::string(serverIP) + ":" + 
+        std::string(serverPort), Colors::SUCCESS);
+        
+        if (currentMode == UIMode::EMAIL) {
+            StartEmailCheckThread();
+            emailStatus = "Running";
+        }
     }
 }
 
@@ -143,6 +157,7 @@ void RemoteAdminUI::ExecuteCommand(CommandState command) {
         case CommandState::GET_FILE:
             AddResult("Executing: Get File - " + std::string(filePath), Colors::INFO);
             send_manual_command("send_file " + string(filePath), serverIP, std::stoi(serverPort));
+            LoadMedia("received_files/" + getFileName(filePath));
             SimulateCommand("File " + std::string(filePath) + " downloaded and save to: received_files/");
             break;
             
@@ -269,3 +284,4 @@ void RemoteAdminUI::SetMode(UIMode mode) {
         emailStatus = "Running";
     }
 }
+
